@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("rem_frontend_generator")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cc6ed4af4f3cd1524a738f500f2cce56e351b420")]
 [assembly: System.Reflection.AssemblyProductAttribute("rem_frontend_generator")]
 [assembly: System.Reflection.AssemblyTitleAttribute("rem_frontend_generator")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
