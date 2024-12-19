@@ -1,0 +1,34 @@
+O add_subtract_impl<O>(O n, O m, int set_flags, int is_add)
+{
+    O d;
+
+    if (is_add)
+    {
+        d = n + m;
+    }
+    else
+    {
+        d = n - m;
+    }
+
+    return d;
+}
+
+fl_instruction 32 add_subtract_imm12(sf_1 op_1 S_1 100010 sh_1 imm12_12 Rn_5 Rd_5)
+{
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    O operand1 = XSP(Rn);
+    O operand2 = imm12 << (sh * 12);
+
+    O d = add_subtract_impl<O>(operand1, operand2, S, op);
+
+    if (S && Rd != 31)
+    {
+        X(Rd, d);
+    }
+    else
+    {
+        XSP(Rd, d);
+    }
+}

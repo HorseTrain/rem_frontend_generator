@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "zZtW+jgah2g=",
+  "success": true,
+  "projectFilePath": "/home/linvirt/code/rem_frontend_generator/rem_frontend_generator.csproj",
+  "expectedPackageFiles": [
+    "/home/linvirt/.nuget/packages/antlr4.runtime.standard/4.13.1/antlr4.runtime.standard.4.13.1.nupkg.sha512"
+  ],
+  "logs": []
+}

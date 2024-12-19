@@ -1,0 +1,17 @@
+/home/linvirt/code/rem_frontend_generator/bin/Debug/net9.0/rem_frontend_generator
+/home/linvirt/code/rem_frontend_generator/bin/Debug/net9.0/rem_frontend_generator.deps.json
+/home/linvirt/code/rem_frontend_generator/bin/Debug/net9.0/rem_frontend_generator.runtimeconfig.json
+/home/linvirt/code/rem_frontend_generator/bin/Debug/net9.0/rem_frontend_generator.dll
+/home/linvirt/code/rem_frontend_generator/bin/Debug/net9.0/rem_frontend_generator.pdb
+/home/linvirt/code/rem_frontend_generator/obj/Debug/net9.0/rem_frontend_generator.GeneratedMSBuildEditorConfig.editorconfig
+/home/linvirt/code/rem_frontend_generator/obj/Debug/net9.0/rem_frontend_generator.AssemblyInfoInputs.cache
+/home/linvirt/code/rem_frontend_generator/obj/Debug/net9.0/rem_frontend_generator.AssemblyInfo.cs
+/home/linvirt/code/rem_frontend_generator/obj/Debug/net9.0/rem_frontend_generator.csproj.CoreCompileInputs.cache
+/home/linvirt/code/rem_frontend_generator/obj/Debug/net9.0/rem_frontend_generator.dll
+/home/linvirt/code/rem_frontend_generator/obj/Debug/net9.0/refint/rem_frontend_generator.dll
+/home/linvirt/code/rem_frontend_generator/obj/Debug/net9.0/rem_frontend_generator.pdb
+/home/linvirt/code/rem_frontend_generator/obj/Debug/net9.0/rem_frontend_generator.genruntimeconfig.cache
+/home/linvirt/code/rem_frontend_generator/obj/Debug/net9.0/ref/rem_frontend_generator.dll
+/home/linvirt/code/rem_frontend_generator/obj/Debug/net9.0/rem_frontend_generator.csproj.AssemblyReference.cache
+/home/linvirt/code/rem_frontend_generator/bin/Debug/net9.0/Antlr4.Runtime.Standard.dll
+/home/linvirt/code/rem_frontend_generator/obj/Debug/net9.0/rem_fron.F7C52D22.Up2Date
