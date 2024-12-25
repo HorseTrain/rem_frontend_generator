@@ -1,0 +1,30 @@
+fl_instruction 32 move_wide_immediate (sf_1 opc_2 100101 hw_2 imm16_16 Rd_5)
+{
+    int shift = hw * 16;
+    int immediate = imm16 << shift;
+
+    o64 result;
+
+    if (opc == 0)
+    {
+        result = ~immediate;
+    }
+    else if (opc == 3)
+    {
+        result = X(Rd);
+
+        result = result & ~(65535 << shift);
+        result = result | immediate;
+    }
+    else
+    {
+        result = immediate;
+    }
+
+    if (sf == 0)
+    {
+        result = (o32)result;
+    }
+
+    X(Rd, result);
+}

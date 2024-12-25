@@ -10,7 +10,7 @@ namespace rem_frontend_generator.language
 
             foreach (var generic in source.generics)
             {
-                result += generic.name;
+                result += "G";
 
                 if (generic != source.generics.Last())
                 {
@@ -18,11 +18,35 @@ namespace rem_frontend_generator.language
                 }
             }
 
-            result += $"> ";
+            result += $">";
 
             foreach (var parameter in source.parameters)
             {
-                result += parameter.type.get_type_key() + " ";
+                result += " A";
+            }
+
+            return result;
+        }
+
+        public static string get_function_key(function_call call)
+        {
+            string result = $"function {call.function_name} <";
+
+            foreach (var generic in call.generics)
+            {
+                result += "G";
+
+                if (generic != call.generics.Last())
+                {
+                    result += ",";
+                }
+            }
+
+            result += $">";
+
+            foreach (var argument in call.function_arguments)
+            {
+                result += " A";
             }
 
             return result;

@@ -1,3 +1,8 @@
+int decode_add_subtract_imm_12(int source, int shift)
+{
+    return source << (shift * 12);
+}
+
 O add_subtract_impl<O>(O n, O m, int set_flags, int is_add)
 {
     O d;
@@ -11,6 +16,23 @@ O add_subtract_impl<O>(O n, O m, int set_flags, int is_add)
         d = n - m;
     }
 
+    if (set_flags)
+    {
+        _sys(0, d clt 0);
+        _sys(1, d == 0);
+
+        if (is_add)
+        {
+            _sys(2, d < n);
+            _sys(3, ((d ^ n) & ~(n ^ m)) clt 0);
+        }
+        else
+        {
+            _sys(2, d >= n);
+            _sys(3, ((d ^ n) & (n ^ m)) clt 0);
+        }
+    }
+
     return d;
 }
 
@@ -19,11 +41,11 @@ fl_instruction 32 add_subtract_imm12(sf_1 op_1 S_1 100010 sh_1 imm12_12 Rn_5 Rd_
     o_type O = switch sf { case 0 : o32, case 1 : o64 };
 
     O operand1 = XSP(Rn);
-    O operand2 = imm12 << (sh * 12);
+    O operand2 = decode_add_subtract_imm_12(imm12, sh);
 
-    O d = add_subtract_impl<O>(operand1, operand2, S, op);
+    O d = add_subtract_impl<O>(operand1, operand2, S, op == 0);
 
-    if (S && Rd != 31)
+    if (S)
     {
         X(Rd, d);
     }

@@ -56,7 +56,7 @@ lValueSet
     ;
 
 ifStatement
-    : 'if' expression line elseStatement?
+    : 'if' parenthesis line elseStatement?
     ;
 
 elseStatement
@@ -73,7 +73,14 @@ identifierExpression
 
 baseExpression
     : identifierExpression
+    | parenthesis
     | number
+    | trueFalse
+    | cast
+    ;
+
+cast
+    : '(' variableType ')' expression
     ;
 
 unaryExpression
@@ -93,8 +100,7 @@ functionCall
     ;
 
 expression
-    : parenthesis
-    | baseExpression
+    : baseExpression
     | unaryExpression
     | functionCall
     | expression ('*' | '/' | 'sdiv' | '%') expression
@@ -151,6 +157,11 @@ functionDeclaration
 
 identifier
     : IDENTIFIER
+    ;
+
+trueFalse
+    : 'true'
+    | 'false'
     ;
 
 number

@@ -6,5 +6,10 @@ namespace rem_frontend_generator.language
         {
             throw new Exception();
         }
+
+        public bool is_runtime()
+        {
+            return this is not compile_time_type;
+        }
     }
 }

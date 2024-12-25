@@ -1,28 +1,40 @@
-o64 X(int reg_id) external
-void X(int reg_id, o64 value) external
-o64 SP() external
-void SP(o64 value) external
+o64 _x(int reg_id) external
+void _x(int reg_id, o64 value) external
+o64 _sys(int reg_id) external
+void _sys(int reg_id, o64 value) external
+void _branch_long(o64 location) external
+int _get_pc() external
 
-o64 XSP(int reg_index)
+o64 XSP(int reg_id)
 {
-    if (reg_index == 31)
+    return _x(reg_id);
+}
+
+void XSP(int reg_id, o64 value)
+{
+    _x(reg_id, value);
+}
+
+o64 X(int reg_id)
+{
+    if (reg_id == 31)
     {
-        return SP();
+        return 0;
     }
     else
     {
-        return X(reg_index);
+        return _x(reg_id);
     }
 }
 
-void XSP(int reg_index, o64 value)
+void X(int reg_id, o64 value)
 {
-    if (reg_index == 31)
+    if (reg_id == 31)
     {
-        SP(value);
+        return;
     }
     else
     {
-        X(reg_index, value);
+        _x(reg_id, value);
     }
 }

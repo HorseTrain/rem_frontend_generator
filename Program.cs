@@ -42,20 +42,10 @@ class Program
 
         source_file sf = builder.Visit(parse) as source_file;
 
-        cpp_interpreter_generator i_generator = new cpp_interpreter_generator();
-        rem_jit_generator j_generator = new rem_jit_generator();
+        rem_generator generator = new rem_generator();
 
-        i_generator.generate(sf);
-        j_generator.generate(sf);
+        generator.generate_files(sf);
 
-        File.WriteAllText("/home/linvirt/code/rem/src/emulator/aarch64/interpreter/interpreter.cpp",i_generator.cpp_file.ToString());
-        File.WriteAllText("/home/linvirt/code/rem/src/emulator/aarch64/interpreter/interpreter.h",i_generator.header_file.ToString());
-
-        File.WriteAllText("/home/linvirt/code/rem/src/emulator/aarch64/jit/jit.cpp",j_generator.cpp_file.ToString());
-        File.WriteAllText("/home/linvirt/code/rem/src/emulator/aarch64/jit/jit.h",j_generator.header_file.ToString());
-
-
-        //File.WriteAllText("/home/linvirt/code/rem/src/emulator/aarch64/jit.h",v.header_file.ToString());
-        //File.WriteAllText("/home/linvirt/code/rem/src/emulator/aarch64/jit.cpp",v.cpp_file.ToString());
+        generator.store_to("/home/linvirt/code/rem/src/emulator/aarch64/", "aarch64_impl");
     }
 }

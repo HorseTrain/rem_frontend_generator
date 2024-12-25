@@ -122,6 +122,12 @@ public interface IlanguageVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <return>The visitor result.</return>
 	Result VisitBaseExpression([NotNull] languageParser.BaseExpressionContext context);
 	/// <summary>
+	/// Visit a parse tree produced by <see cref="languageParser.cast"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitCast([NotNull] languageParser.CastContext context);
+	/// <summary>
 	/// Visit a parse tree produced by <see cref="languageParser.unaryExpression"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
@@ -211,6 +217,12 @@ public interface IlanguageVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
 	Result VisitIdentifier([NotNull] languageParser.IdentifierContext context);
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="languageParser.trueFalse"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitTrueFalse([NotNull] languageParser.TrueFalseContext context);
 	/// <summary>
 	/// Visit a parse tree produced by <see cref="languageParser.number"/>.
 	/// </summary>

@@ -216,6 +216,18 @@ public partial class languageBaseListener : IlanguageListener {
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitBaseExpression([NotNull] languageParser.BaseExpressionContext context) { }
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.cast"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterCast([NotNull] languageParser.CastContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.cast"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitCast([NotNull] languageParser.CastContext context) { }
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="languageParser.unaryExpression"/>.
 	/// <para>The default implementation does nothing.</para>
 	/// </summary>
@@ -395,6 +407,18 @@ public partial class languageBaseListener : IlanguageListener {
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitIdentifier([NotNull] languageParser.IdentifierContext context) { }
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.trueFalse"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterTrueFalse([NotNull] languageParser.TrueFalseContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.trueFalse"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitTrueFalse([NotNull] languageParser.TrueFalseContext context) { }
 	/// <summary>
 	/// Enter a parse tree produced by <see cref="languageParser.number"/>.
 	/// <para>The default implementation does nothing.</para>

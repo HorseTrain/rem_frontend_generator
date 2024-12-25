@@ -10,5 +10,10 @@ namespace rem_frontend_generator.language
         {
             this.value = value;
         }
+
+        public override bool is_runtime()
+        {
+            return false;
+        }
     }
 }

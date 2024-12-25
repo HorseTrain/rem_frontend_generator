@@ -38,7 +38,7 @@ namespace rem_frontend_generator.language
 
         public override i_ast_object VisitParenthesis([NotNull] ParenthesisContext context)
         {
-            return Visit(context.expression());
+            return new unary_operation("()", Visit(context.expression()) as expression);
         }
 
         public override i_ast_object VisitNumber([NotNull] NumberContext context)
@@ -50,7 +50,14 @@ namespace rem_frontend_generator.language
 
         public override i_ast_object VisitReturnStatement([NotNull] ReturnStatementContext context)
         {
-            return new return_statement(Visit(context.expression()) as expression);
+            if (context.expression() == null)
+            {
+                return new return_statement(null, top_scope().get_working_function().return_type);
+            }
+            else
+            {
+                return new return_statement(Visit(context.expression()) as expression, top_scope().get_working_function().return_type);
+            }
         }
 
         public override i_ast_object VisitExpression([NotNull] ExpressionContext context)
@@ -63,8 +70,8 @@ namespace rem_frontend_generator.language
             }
             else if (context.ChildCount == 3)
             {
-                i_ast_object left = Visit(context.expression(0));
-                i_ast_object right = Visit(context.expression(1));
+                expression left = Visit(context.expression(0)) as expression;
+                expression right = Visit(context.expression(1)) as expression;
 
                 return new binary_operation(left, right, context.GetChild(1).GetText());
             }
@@ -74,24 +81,34 @@ namespace rem_frontend_generator.language
             }
         }
 
+        public override i_ast_object VisitUnaryExpression([NotNull] UnaryExpressionContext context)
+        {
+            return new unary_operation(context.GetChild(0).GetText(), Visit(context.baseExpression()) as expression);
+        }
+
+        public override i_ast_object VisitCast([NotNull] CastContext context)
+        {
+            return new cast(Visit(context.variableType()) as variable_type, Visit(context.expression()) as expression);
+        }
+
         public override i_ast_object VisitLValueSet([NotNull] LValueSetContext context)
         {
             l_value_set result = new l_value_set();
 
             result.l_value = new object_reference(top_scope().get_scoped_object(context.identifier().GetText()));
-            result.r_value = Visit(context.expression());
+            result.r_value = Visit(context.expression()) as expression;
 
             return result;
         }
 
         public override i_ast_object VisitIfStatement([NotNull] IfStatementContext context)
         {
-            i_ast_object condition = VisitExpression(context.expression());
+            i_ast_object condition = Visit(context.parenthesis());
 
             i_ast_object yes = Visit(context.line());
             i_ast_object no = context.elseStatement() == null ? null : Visit(context.elseStatement());
 
-            return new if_statment() {condition = condition, yes = yes, no = no};
+            return new if_statment() {condition = condition as expression, yes = yes, no = no};
         }
 
         public override i_ast_object VisitRuntimeTypeSwitch([NotNull] RuntimeTypeSwitchContext context)
@@ -111,6 +128,16 @@ namespace rem_frontend_generator.language
             }
 
             return result;
+        }
+
+        public override i_ast_object VisitTrueFalse([NotNull] TrueFalseContext context)
+        {
+            if (context.GetText() == "true")
+            {
+                return new number(1);
+            }
+
+            return new number(0);
         }
 
         public override i_ast_object VisitOperandTypeDeclaration([NotNull] OperandTypeDeclarationContext context)
@@ -157,7 +184,16 @@ namespace rem_frontend_generator.language
 
             result.function_name = context.identifier().GetText();
 
-            //result.function_reference = top_scope().get_scoped_object(context.identifier().g)
+            string function_key = source_file.get_function_key(result);
+
+            function function_reference = top_scope().get_scoped_object(function_key) as function;
+
+            if (function_reference == null)
+            {
+                throw new Exception();
+            }
+
+            result.function_reference = function_reference;
 
             return result;
         }
@@ -174,7 +210,10 @@ namespace rem_frontend_generator.language
 
                 if (object_to_add is function f)
                 {
-                    result.functions.Add(source_file.get_function_key(f), f);
+                    string function_key = source_file.get_function_key(f);
+
+                    result.functions.Add(function_key, f);
+                    result.add_object_to_scope(function_key, f);
                 }
             }
             
@@ -302,6 +341,27 @@ namespace rem_frontend_generator.language
 
             foreach (var i in instruction_operands.fixedLengthInstructionOperand())
             {
+                instruction_operand working_operand = new instruction_operand();
+                
+                if (i.identifier() != null)
+                {
+                    working_operand.is_encoding = false;
+
+                    string[] parts = i.identifier().GetText().Split('_');
+
+                    working_operand.data = parts[0];
+                    working_operand.size = int.Parse(parts[1]);
+                }
+                else
+                {
+                    working_operand.is_encoding = true;
+
+                    working_operand.data = i.GetText();
+                    working_operand.size = working_operand.data.Length;
+                }
+
+                result.fixed_length_operand_data.Add(working_operand);
+
                 if (i.identifier() == null)
                     continue;
 

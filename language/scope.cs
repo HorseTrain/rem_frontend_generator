@@ -39,5 +39,19 @@ namespace rem_frontend_generator.language
         {
             scoped_objects.Add(name, object_to_add);
         }
+
+        public function get_working_function()
+        {
+            if (this is function f)
+            {
+                return f;
+            }
+            else if (parent_scope != null)
+            {
+                return parent_scope.get_working_function();
+            }
+
+            return null;
+        }
     }
 }

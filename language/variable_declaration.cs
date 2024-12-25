@@ -13,5 +13,22 @@ namespace rem_frontend_generator.language
             this.variable_name = variable_name;
             this.is_parameter = is_parameter;
         }
+
+        public bool is_runtime()
+        {
+            bool result = type.is_runtime();
+
+            if (!result && default_value.is_runtime())
+            {
+                throw new Exception();
+            }
+
+            return result;
+        }
+
+        public bool to_runtime_conversion_needed()
+        {
+            return type.is_runtime() && !default_value.is_runtime();
+        }
     }
 }

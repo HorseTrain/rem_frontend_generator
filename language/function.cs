@@ -11,11 +11,13 @@ namespace rem_frontend_generator.language
         public IParseTree                           function_source { get; set; }
         public scope                                function_body   { get; set; }
         public bool                                 is_external     { get; set; }
+        public List<instruction_operand>            fixed_length_operand_data   { get; set; }
 
         public function(scope parent_scope) : base (parent_scope)
         {
             parameters = new List<variable_declaration>();
             generics = new List<generic_runtime_variable_type>();
+            fixed_length_operand_data = new List<instruction_operand>();
         }
     }
 }
