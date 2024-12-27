@@ -1,0 +1,14 @@
+fl_instruction 32 pc_rel_addressing (op_1 immlo_2 10000 immhi_19 Rd_5)
+{
+    int offset = sign_extend((immhi << 2) | immlo, 21);
+    int instruction_pc = _get_pc();
+
+    if (op)
+    {
+        offset = offset << 12;
+
+        instruction_pc = instruction_pc & 4095;
+    }
+
+    X(Rd, instruction_pc + offset);
+}

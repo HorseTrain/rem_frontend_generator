@@ -1,0 +1,61 @@
+int sign_extend(int source, int count)
+{
+    int max = 64;
+    int shift = max - count;
+
+    return (source << shift) sar shift;
+}
+
+O a_shift_reg<O>(int m, int shift_type, int ammount)
+{
+    O result = X(m);
+
+    if (shift_type == 0)
+    {
+        return result << ammount;
+    }
+    else if (shift_type == 1)
+    {
+        return result >> ammount;
+    }
+    else if (shift_type == 2)
+    {
+        return result sar ammount;
+    }
+    else
+    {
+        return result ror ammount;
+    }
+}
+
+O a_extend_reg<O>(int m, int extend_type, int shift)
+{
+    O val = X(m);
+
+    if (extend_type == 0)
+    {
+        val = val & UINT8_MAX;
+    }
+    else if (extend_type == 1)
+    {
+        val = val & UINT16_MAX;
+    }
+    else if (extend_type == 2)
+    {
+        val = val & UINT32_MAX;
+    }
+    else if (extend_type == 4)
+    {
+        val = extend O (o8)val; 
+    }
+    else if (extend_type == 5)
+    {
+        val = extend O (o16)val; 
+    }
+    else if (extend_type == 6)
+    {
+        val = extend O (o32)val; 
+    }
+
+    return val << shift;
+}

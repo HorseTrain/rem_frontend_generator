@@ -77,6 +77,26 @@ baseExpression
     | number
     | trueFalse
     | cast
+    | constants
+    ;
+
+constants
+    : 'UINT8_MIN'
+    | 'INT8_MIN'
+    | 'UINT16_MIN'
+    | 'INT16_MIN'
+    | 'UINT32_MIN'
+    | 'INT32_MIN'
+    | 'UINT64_MIN'
+    | 'INT64_MIN'
+    | 'UINT8_MAX'
+    | 'INT8_MAX'
+    | 'UINT16_MAX'
+    | 'INT16_MAX'
+    | 'UINT32_MAX'
+    | 'INT32_MAX'
+    | 'UINT64_MAX'
+    | 'INT64_MAX'
     ;
 
 cast
@@ -85,6 +105,10 @@ cast
 
 unaryExpression
     : ('-' | '~' | '!') baseExpression
+    ;
+
+signExtend
+    : 'extend' variableType expression
     ;
 
 parenthesis
@@ -103,9 +127,10 @@ expression
     : baseExpression
     | unaryExpression
     | functionCall
+    | signExtend
     | expression ('*' | '/' | 'sdiv' | '%') expression
     | expression ('+' | '-') expression
-    | expression ('<<' | '>>' | 'sar') expression
+    | expression ('<<' | '>>' | 'sar' | 'ror') expression
     | expression ('clt' | 'cgt' | 'clte' | 'cgte' | '<' | '<=' | '>' | '>=') expression
     | expression ('==' | '!=') expression
     | expression '&' expression
@@ -235,3 +260,7 @@ IDENTIFIER
 WHITE_SPACE
     : [ \n\t\r] -> skip
     ;
+
+LINE_COMMENT
+    : '//' ~[\r\n]* -> skip
+;

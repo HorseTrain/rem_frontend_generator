@@ -181,6 +181,16 @@ public interface IlanguageListener : IParseTreeListener {
 	/// <param name="context">The parse tree.</param>
 	void ExitBaseExpression([NotNull] languageParser.BaseExpressionContext context);
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.constants"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterConstants([NotNull] languageParser.ConstantsContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.constants"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitConstants([NotNull] languageParser.ConstantsContext context);
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="languageParser.cast"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
@@ -200,6 +210,16 @@ public interface IlanguageListener : IParseTreeListener {
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	void ExitUnaryExpression([NotNull] languageParser.UnaryExpressionContext context);
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.signExtend"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterSignExtend([NotNull] languageParser.SignExtendContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.signExtend"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitSignExtend([NotNull] languageParser.SignExtendContext context);
 	/// <summary>
 	/// Enter a parse tree produced by <see cref="languageParser.parenthesis"/>.
 	/// </summary>

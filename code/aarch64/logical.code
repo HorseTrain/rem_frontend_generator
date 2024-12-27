@@ -1,0 +1,40 @@
+fl_instruction 32 logical_shifted (sf_1 opc_2 01010 shift_2 N_1 Rm_5 imm6_6 Rn_5 Rd_5)
+{
+    int shift_type = shift;
+    int shift_ammount = imm6;
+
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    O operand1 = X(Rn);
+    O operand2 = a_shift_reg<O>(Rm, shift_type, shift_ammount);
+
+    if (N)
+    {
+        operand2 = ~operand2;
+    }
+
+    O result;
+
+    if (opc == 0 || opc == 3)
+    {
+        result = operand1 & operand2;
+
+        if (opc == 3)
+        {
+            _sys(0, result clt 0);
+            _sys(1, result == 0);
+            _sys(2, 0);
+            _sys(3, 0);
+        }
+    }
+    else if (opc == 1)
+    {
+        result = operand1 | operand2;
+    }
+    else if (opc == 2)
+    {
+        result = operand1 ^ operand2;
+    }
+
+    X(Rd, result);
+}

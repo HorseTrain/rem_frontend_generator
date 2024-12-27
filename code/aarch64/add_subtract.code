@@ -28,7 +28,7 @@ O add_subtract_impl<O>(O n, O m, int set_flags, int is_add)
         }
         else
         {
-            _sys(2, d >= n);
+            _sys(2, n >= m);
             _sys(3, ((d ^ n) & (n ^ m)) clt 0);
         }
     }
@@ -52,5 +52,41 @@ fl_instruction 32 add_subtract_imm12(sf_1 op_1 S_1 100010 sh_1 imm12_12 Rn_5 Rd_
     else
     {
         XSP(Rd, d);
+    }
+}
+
+fl_instruction 32 add_subtract_shifted(sf_1 op_1 S_1 01011 shift_2 0 Rm_5 imm6_6 Rn_5 Rd_5)
+{
+    int shift_ammount = imm6;
+
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    O operand1 = X(Rn);
+    O operand2 = a_shift_reg<O>(Rm, shift, shift_ammount);
+
+    O result = add_subtract_impl<O>(operand1, operand2, S, op == 0);
+
+    X(Rd, result);
+}
+
+fl_instruction 32 add_subtract_extended(sf_1 op_1 S_1 01011001 Rm_5 option_3 imm3_3 Rn_5 Rd_5)
+{
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    int shift = imm3;
+    int extend_type = option;
+
+    O operand1 = XSP(Rn);
+    O operand2 = a_extend_reg<O>(Rm, extend_type, shift);
+
+    O result = add_subtract_impl<O>(operand1, operand2, S, op == 0);
+
+    if (S)
+    {
+        X(Rd, result);
+    }
+    else
+    {
+        XSP(Rd, result);
     }
 }

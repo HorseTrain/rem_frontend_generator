@@ -28,10 +28,8 @@ namespace rem_frontend_generator.language
             {
                 return left.get_type();
             }
-            else
-            {
-                return left.get_type();
-            }
+
+            return left.get_type();
         }
     }
 }

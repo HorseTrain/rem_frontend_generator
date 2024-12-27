@@ -9,6 +9,14 @@ namespace rem_frontend_generator.language
     {
         Stack<scope> scope_stack;
 
+        static runtime_variable o8 = new runtime_variable(runtime_variable_size.int8);
+        static runtime_variable o16 = new runtime_variable(runtime_variable_size.int16);
+        static runtime_variable o32 = new runtime_variable(runtime_variable_size.int32);
+        static runtime_variable o64 = new runtime_variable(runtime_variable_size.int64);
+        static runtime_variable o128 = new runtime_variable(runtime_variable_size.int128);
+        static compile_time_type nonvoid_type = new compile_time_type(false);
+        static compile_time_type void_type = new compile_time_type(true);
+
         public ast_builder()
         {
             scope_stack = new Stack<scope>();
@@ -41,9 +49,56 @@ namespace rem_frontend_generator.language
             return new unary_operation("()", Visit(context.expression()) as expression);
         }
 
+        ulong create_mask(int size)
+        {
+            if (size >= 64)
+                return ulong.MaxValue;
+
+            return (1UL << size) - 1;
+        }
+
+        public override i_ast_object VisitConstants([NotNull] ConstantsContext context)
+        {
+            string src = context.GetText();
+
+            bool signed = !src.StartsWith("U");
+            bool is_max = src.EndsWith("_MAX");
+
+            string type = src.Split('_')[0];
+
+            if (!signed)
+            {
+                type = type.Substring(1);
+            }
+
+            int size = int.Parse(type.Substring(3, type.Length - 3));
+            ulong result ;
+
+            if (is_max)
+            {
+                result = create_mask(size);
+
+                if (signed)
+                    result >>= 1;
+
+                return new number(result, nonvoid_type);
+            }
+            else
+            {
+                if (!signed)
+                    return new number(0, nonvoid_type);
+
+                result = ulong.MaxValue << (size - 1);
+
+                result &= create_mask(size);
+
+                return new number(result, nonvoid_type);
+            }
+        }
+
         public override i_ast_object VisitNumber([NotNull] NumberContext context)
         {
-            number result = new number(BigInteger.Parse(context.GetText()));
+            number result = new number(BigInteger.Parse(context.GetText()), nonvoid_type);
 
             return result;
         }
@@ -58,6 +113,14 @@ namespace rem_frontend_generator.language
             {
                 return new return_statement(Visit(context.expression()) as expression, top_scope().get_working_function().return_type);
             }
+        }
+
+        public override i_ast_object VisitSignExtend([NotNull] SignExtendContext context)
+        {
+            variable_type result_type = Visit(context.variableType()) as variable_type;
+            expression value = Visit(context.expression()) as expression;
+
+            return new sign_extend(result_type, value);
         }
 
         public override i_ast_object VisitExpression([NotNull] ExpressionContext context)
@@ -134,10 +197,10 @@ namespace rem_frontend_generator.language
         {
             if (context.GetText() == "true")
             {
-                return new number(1);
+                return new number(1, nonvoid_type);
             }
 
-            return new number(0);
+            return new number(0, nonvoid_type);
         }
 
         public override i_ast_object VisitOperandTypeDeclaration([NotNull] OperandTypeDeclarationContext context)
@@ -302,18 +365,18 @@ namespace rem_frontend_generator.language
 
         public override i_ast_object VisitCompileTimeIntegerType([NotNull] CompileTimeIntegerTypeContext context)
         {
-            return new compile_time_type(context.GetText() == "void");
+            return context.GetText() == "void" ? void_type : nonvoid_type;
         }
 
         i_ast_object get_runtime_type(string name)
         {
             switch (name)
             {
-                case "o8": return new runtime_variable(runtime_variable_size.int8);
-                case "o16": return new runtime_variable(runtime_variable_size.int16);
-                case "o32": return new runtime_variable(runtime_variable_size.int32);
-                case "o64": return new runtime_variable(runtime_variable_size.int64);
-                case "o128": return new runtime_variable(runtime_variable_size.int128);
+                case "o8":      return o8;
+                case "o16":     return o16;
+                case "o32":     return o32;
+                case "o64":     return o64;
+                case "o128":    return o128;
                 default: 
                 {
                     if (top_scope().object_exists(name, out i_ast_object result))
@@ -368,7 +431,7 @@ namespace rem_frontend_generator.language
                 string name = i.identifier().GetText().Split('_')[0];
 
                 variable_declaration parameter = new variable_declaration(
-                    new compile_time_type(false),
+                    nonvoid_type,
                     name,
                     true
                 );
@@ -377,7 +440,7 @@ namespace rem_frontend_generator.language
                 result.parameters.Add(parameter);
             }
 
-            result.return_type = new compile_time_type(true);
+            result.return_type = void_type;
             result.function_name = instruction_name;
 
             result.function_source = context.scope();

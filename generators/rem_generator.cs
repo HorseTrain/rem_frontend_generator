@@ -1,3 +1,4 @@
+using System.Reflection.Emit;
 using System.Text;
 using rem_frontend_generator.language;
 
@@ -36,6 +37,7 @@ namespace rem_frontend_generator.generators
                 case generic_runtime_variable_type grvt: return grvt.name;
                 case runtime_variable rv: return rv.size.ToString();
                 case generic_declaration gd: return gd.name;
+                case compile_time_type ct: return compile_time_operand_type;
                 default: throw new Exception();
             }
         }
@@ -132,6 +134,13 @@ namespace rem_frontend_generator.generators
                     case "^": return "ir_bitwise_exclusive_or";
                     case "~": return "ir_bitwise_not";
                     case ">=": return "ir_compare_greater_equal_unsigned";
+                    case "<<": return "ir_shift_left";
+                    case ">>": return "ir_shift_right_unsigned";
+                    case "ror": return "ir_rotate_right";
+                    case "sar": return "ir_shift_right_signed";
+                    case "sdiv": return "ir_divide_signed";
+                    case "/": return "ir_divide_unsigned";
+                    case "&&": return "ir_bitwise_and";
                     default: throw new Exception();
                 }
             }
@@ -144,6 +153,7 @@ namespace rem_frontend_generator.generators
                     case "cgt": is_signed = true; return ">";
                     case "clte": is_signed = true; return "<=";
                     case "cgte": is_signed = true; return ">=";
+                    case "sdiv": is_signed = true; return "/";
 
                     default:
                         return name;
@@ -151,9 +161,16 @@ namespace rem_frontend_generator.generators
             }
         }
 
-        string sign_compile_time(string source)
+        string sign_compile_time(string source, variable_type to_type = null)
         {
-            return $"(int64_t){source}";
+            string result = $"sign_extend({source})";
+
+            if (to_type != null)
+            {
+                result = $"({get_explicit_rem_type(to_type)}){result}";
+            }
+
+            return result;
         }
 
         string convert_to_runtime(string source, variable_type type, bool interpreted)
@@ -206,6 +223,10 @@ namespace rem_frontend_generator.generators
                         {
                             value = convert_to_runtime(value, rs.return_type, interpreted);
                         }
+                        else if (!interpreted && rs.to_return.get_type() != rs.return_type)
+                        {
+                            value = convert_to_other_runtime(value, rs.return_type, interpreted);
+                        }
                         
                         return $"{result} {value};";
                     }
@@ -222,6 +243,10 @@ namespace rem_frontend_generator.generators
                         if (!interpreted && vd.to_runtime_conversion_needed())
                         {
                             default_value = convert_to_runtime(default_value, vd.type, interpreted);
+                        }
+                        else if (!interpreted && vd.is_runtime() && !variable_type.types_compatible(vd.default_value.get_type(),vd.type))
+                        {
+                            default_value = convert_to_other_runtime(default_value, vd.type, interpreted);
                         }
 
                         result = $"{result} = {default_value};";
@@ -288,7 +313,7 @@ namespace rem_frontend_generator.generators
 
                         return $"{raw_operation} {result}";
                     }
-                }; break;
+                }; 
 
                 case binary_operation bo:
                 {
@@ -312,7 +337,23 @@ namespace rem_frontend_generator.generators
                             right = sign_compile_time(right);
                         }
 
-                        return $"{left} {raw_operation} {right}";
+                        string result;
+
+                        if (raw_operation == "ror")
+                        {
+                            result = $"rotate_right({left},{right})";
+                        }
+                        else
+                        {
+                            result = $"{left} {raw_operation} {right}";
+                        }
+
+                        if (is_signed)
+                        {
+                            result = $"({get_rem_type(bo.get_type(), interpreted)})({result})";
+                        }
+
+                        return result;
                     }
                 };
 
@@ -322,9 +363,30 @@ namespace rem_frontend_generator.generators
                     {
                         cf_runtime.Push(true);
 
-                        throw new Exception();
+                        string result = "{";
+
+                        string context = $"{get_default_argument(interpreted)}->ir";
+
+                        result += @$"
+    ir_operand end = ir_operation_block::create_label({context});
+    ir_operand yes = ir_operation_block::create_label({context});
+
+    ir_operand condition = {generate_object(ifs.condition,interpreted)};
+
+    ir_operation_block::jump_if({context},yes, condition);
+{(ifs.no != null ? string_tools.tab_string(generate_object(ifs.no, interpreted, true)) : "\t/* TODO if statements without a no should not have this*/")}
+    
+    ir_operation_block::jump({context},end);
+    ir_operation_block::mark_label({context}, yes);
+
+{string_tools.tab_string(generate_object(ifs.yes, interpreted, true))}
+
+    ir_operation_block::mark_label({context}, end);
+";
 
                         cf_runtime.Pop();
+
+                        return result + "}";
                     }
                     else
                     {
@@ -407,7 +469,12 @@ namespace rem_frontend_generator.generators
 
                 case l_value_set lvs:
                 {
-                    if (!interpreted && in_cf_runtime())
+                    if (!lvs.l_value.is_runtime() && lvs.r_value.is_runtime())
+                    {
+                        throw new Exception();
+                    }
+
+                    if (!interpreted && lvs.r_value.is_runtime() && in_cf_runtime())
                     {
                         throw new Exception();
                     }
@@ -419,7 +486,11 @@ namespace rem_frontend_generator.generators
                         {
                             value = convert_to_runtime(value, lvs.l_value.get_type(),interpreted);
                         }
-                        
+                        else if (!interpreted && lvs.l_value.is_runtime() && !variable_type.types_compatible(lvs.l_value.get_type(),lvs.r_value.get_type()))
+                        {
+                            value = convert_to_other_runtime(value, lvs.l_value.get_type(), interpreted);
+                        }
+
                         return $"{generate_object(lvs.l_value,interpreted)} = {value};";
                     }
                 };
@@ -475,6 +546,24 @@ namespace rem_frontend_generator.generators
                         default: throw new Exception();
                     }
                 }
+
+                case sign_extend se:
+                {
+                    if (interpreted || !se.is_runtime())
+                    {
+                        string result = generate_object(se.value, interpreted);
+
+                        return sign_compile_time(result, se.new_type);
+                    }
+                    else if (!interpreted && se.is_runtime())
+                    {
+                        return $"ssa_emit_context::emit_ssa({get_default_argument(interpreted)},ir_sign_extend,{generate_object(se.value, interpreted)}, {get_explicit_rem_type(se.new_type)})";
+                    }
+                    else
+                    {
+                        throw new Exception();
+                    }
+                }; break;
 
                 default: throw new Exception();
             }
@@ -559,13 +648,7 @@ namespace rem_frontend_generator.generators
 #include ""emulator/ssa_emit_context.h""
 #include ""aarch64_context_offsets.h""
 #include ""aarch64_process.h""
-
-enum branch_type
-{
-    no_branch       = 0,
-    short_branch    = 1 << 0,
-    long_branch     = 1 << 1
-};
+#include ""emulator/branch_type.h""
 
 struct interpreter_data
 {
@@ -604,6 +687,27 @@ static void append_table(aarch64_process* process, std::string encoding, void* e
 	}
 
 	fixed_length_decoder<uint32_t>::insert_entry(&process->decoder, instruction, mask, emit, interperate);
+}
+
+template <typename T>
+int64_t sign_extend(T src) 
+{
+    switch (sizeof(T))
+    {
+        case 1: return (int8_t)src;
+        case 2: return (int16_t)src;
+        case 4: return (int32_t)src;
+    }
+
+    return src;
+}
+
+template <typename T>
+T rotate_right(T src, int ammount)
+{
+	int INT_BITS = sizeof(T) * 8;
+
+	return (src >> ammount)|(src << (INT_BITS - ammount));
 }
 
 ");

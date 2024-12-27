@@ -122,6 +122,12 @@ public interface IlanguageVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <return>The visitor result.</return>
 	Result VisitBaseExpression([NotNull] languageParser.BaseExpressionContext context);
 	/// <summary>
+	/// Visit a parse tree produced by <see cref="languageParser.constants"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitConstants([NotNull] languageParser.ConstantsContext context);
+	/// <summary>
 	/// Visit a parse tree produced by <see cref="languageParser.cast"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
@@ -133,6 +139,12 @@ public interface IlanguageVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
 	Result VisitUnaryExpression([NotNull] languageParser.UnaryExpressionContext context);
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="languageParser.signExtend"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitSignExtend([NotNull] languageParser.SignExtendContext context);
 	/// <summary>
 	/// Visit a parse tree produced by <see cref="languageParser.parenthesis"/>.
 	/// </summary>

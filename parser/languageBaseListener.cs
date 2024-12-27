@@ -216,6 +216,18 @@ public partial class languageBaseListener : IlanguageListener {
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitBaseExpression([NotNull] languageParser.BaseExpressionContext context) { }
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.constants"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterConstants([NotNull] languageParser.ConstantsContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.constants"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitConstants([NotNull] languageParser.ConstantsContext context) { }
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="languageParser.cast"/>.
 	/// <para>The default implementation does nothing.</para>
 	/// </summary>
@@ -239,6 +251,18 @@ public partial class languageBaseListener : IlanguageListener {
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitUnaryExpression([NotNull] languageParser.UnaryExpressionContext context) { }
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.signExtend"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterSignExtend([NotNull] languageParser.SignExtendContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.signExtend"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitSignExtend([NotNull] languageParser.SignExtendContext context) { }
 	/// <summary>
 	/// Enter a parse tree produced by <see cref="languageParser.parenthesis"/>.
 	/// <para>The default implementation does nothing.</para>

@@ -1,0 +1,42 @@
+fl_instruction 32 divide(sf_1 0011010110 Rm_5 00001 o1_1 Rn_5 Rd_5)
+{
+    int is_signed = o1 == 1;
+
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+    O operand1 = X(Rn);
+    O operand2 = X(Rm);
+
+    O result;
+
+    if (operand2 == 0)
+    {
+        X(Rd, 0);
+    }
+    else
+    {
+        if (is_signed)
+        {
+            int min = INT64_MIN;
+            int neg_one = UINT64_MAX;
+
+            if (!sf)
+            {
+                min = min >> 32;
+                neg_one = neg_one >> 32;
+            }
+
+            if (operand1 == min && operand2 == (O)UINT64_MAX)
+            {
+                X(Rd, min);
+            }
+            else
+            {
+                X(Rd,operand1 sdiv operand2);
+            }
+        }
+        else
+        {
+            X(Rd,operand1 / operand2);
+        }
+    }
+}
