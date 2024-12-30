@@ -1,6 +1,6 @@
 namespace rem_frontend_generator.language
 {
-    public class generic_runtime_variable_type : variable_type
+    public class generic_runtime_variable_type : variable_type, i_generic_name
     {
         public string   name    { get; set; }
 

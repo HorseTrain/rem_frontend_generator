@@ -29,6 +29,25 @@ namespace rem_frontend_generator.language
                 return left.get_type();
             }
 
+            /*
+            else if (left.is_runtime() && !right.is_runtime())
+            {
+                return left.get_type();
+            }
+            else if (!left.is_runtime() && right.is_runtime())
+            {
+                return right.get_type();
+            }
+            else if (left.get_type() == right.get_type())
+            {
+                return left.get_type();
+            }
+            else
+            {
+                throw new Exception($"{left.get_type()} {right.get_type()}");
+            }
+            */
+
             return left.get_type();
         }
     }

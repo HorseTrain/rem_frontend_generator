@@ -1,0 +1,376 @@
+fl_instruction 32 load_store_register_post(size_2 111 VR_1 00 opc_2 0 imm9_9 01 Rn_5 Rt_5)
+{
+    load_store_register_imm_unscaled(size, VR, opc, imm9, 1, Rn, Rt);
+}
+
+fl_instruction 32 load_store_register_pre(size_2 111 VR_1 00 opc_2 0 imm9_9 11 Rn_5 Rt_5)
+{
+    load_store_register_imm_unscaled(size, VR, opc, imm9, 3, Rn, Rt);
+}
+
+fl_instruction 32 load_store_register_unscaled(size_2 111 VR_1 00 opc_2 0 imm9_9 00 Rn_5 Rt_5)
+{
+    load_store_register_imm_unscaled(size, VR, opc, imm9, 0, Rn, Rt);
+}
+
+fl_instruction 32 load_store_register_pair_imm_offset(opc_2 101 VR_1 010 L_1 imm7_7 Rt2_5 Rn_5 Rt_5)
+{
+    load_store_register_pair_imm(opc, VR, 2, L, imm7, Rt2, Rn, Rt);
+}
+
+fl_instruction 32 load_store_register_pair_imm_post(opc_2 101 VR_1 001 L_1 imm7_7 Rt2_5 Rn_5 Rt_5)
+{
+    load_store_register_pair_imm(opc, VR, 1, L, imm7, Rt2, Rn, Rt);
+}
+
+fl_instruction 32 load_store_register_pair_imm_pre(opc_2 101 VR_1 011 L_1 imm7_7 Rt2_5 Rn_5 Rt_5)
+{
+    load_store_register_pair_imm(opc, VR, 3, L, imm7, Rt2, Rn, Rt);
+}
+
+//0 load
+//1 store
+
+void load_store_register_pair_imm(int opc, int VR,int wb,int L, int imm7, int Rt2, int Rn, int Rt)
+{
+    int wback = wb != 2;
+    int postindex = wb == 1;
+
+    int memop = !L;
+
+    int is_signed = (opc & 1);
+    int scale;
+
+    if (VR)
+    {
+        scale = 2 + opc;
+    }
+    else
+    {
+        scale = 2 + ((opc >> 1) & 1);
+    }
+
+    int datasize = 8 << scale;
+    int offset = sign_extend(imm7, 7) << scale;
+    int dbytes = datasize / 8;
+
+    o64 address = XSP(Rn);
+
+    if (!postindex)
+    {
+        address = address + offset;
+    }
+
+    o_type S = switch datasize { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64, case 128 : o128 };
+
+    if (VR)
+    {
+        if (memop == 0)
+        {
+            S d0 = mem<S>(address + 0);
+            S d1 = mem<S>(address + dbytes)
+
+            V(Rt, d0);
+            V(Rt2, d1);
+        }
+        else
+        {
+            mem<S>(address, V(Rt));
+            mem<S>(address + dbytes, V(Rt2));
+        }
+    }
+    else
+    {
+        if (memop == 0)
+        {
+            o64 d0 = mem<S>(address + 0);
+            o64 d1 = mem<S>(address + dbytes)
+
+            if (is_signed)
+            {
+                d0 = extend o64 (o32)d0;
+                d1 = extend o64 (o32)d1;
+            }
+
+            X(Rt, d0);
+            X(Rt2, d1);
+        }
+        else
+        {
+            mem<S>(address, X(Rt));
+            mem<S>(address + dbytes, X(Rt2));
+        }
+    }
+
+    if (wback)
+    {
+        if (postindex)
+        {
+            address = address + offset;
+        }
+
+        XSP(Rn, address);
+    }
+}
+
+fl_instruction 32 load_store_register_imm_unsigned(size_2 111 VR_1 01 opc_2 imm12_12 Rn_5 Rt_5)
+{
+    if (size == 3 && VR == 0 && opc == 2)
+    {
+        //PREFETCH
+
+        return;
+    }
+
+    int is_vector = VR == 1;
+
+    int wback = 0;
+    int postindex = 0;
+
+    if (is_vector)
+    {
+        int memop;
+        int regsize;
+        int _signed;
+
+        int scale = (bit_c(opc, 1) << 2) | size;
+        int offset = imm12 << scale;
+
+        if (opc & 1) memop = 0 else memop = 1
+        int datasize = 8 << scale;
+
+        o64 address = XSP(Rn);
+
+        if (!postindex)
+        {
+            address = address + offset;
+        }
+
+        o_type O = switch datasize { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64, case 128 : o128 };
+
+        if (memop == 1)
+        {
+            O data = V(Rt);
+
+            mem<O>(address, data);
+        }
+        else
+        {
+            O data = mem<O>(address);
+
+            V(Rt, data);
+        }
+
+        if (wback)
+        {
+            if (postindex)
+            {
+                address = address + offset;
+            }
+
+            XSP(Rn, address);
+        }
+    }
+    else
+    {
+        int memop;
+        int regsize;
+        int _signed;
+
+        int scale = size;
+
+        int offset = imm12 << scale;
+
+        if (bit_c(opc,1) == 0)
+        {
+            if (opc & 1) memop = 0 else memop = 1
+            if (size == 3) regsize = 64 else regsize = 32
+            _signed = false;
+        }
+        else
+        {
+            if (size == 3)
+            {
+                undefined();
+            }
+            else
+            {
+                memop = 0;
+                if (opc & 1) regsize = 32 else regsize = 64
+                _signed = true;
+            }
+        }
+
+        int datasize = 8 << scale;
+
+        o64 address = XSP(Rn);
+
+        if (!postindex)
+        {
+            address = address + offset;
+        }
+
+        o_type S = switch datasize { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64 };
+        o_type R = switch regsize { case 32 : o32, case 64 : o64 };
+
+        if (memop == 1)
+        {
+            o64 data = X(Rt);
+
+            mem<S>(address, (S)data);
+        }
+        else
+        {
+            o64 n = mem<S>(address);
+
+            if (_signed)
+            {
+                n = extend R (S)n;
+            }
+
+            X(Rt, n);
+        }
+
+        if (wback)
+        {
+            if (postindex)
+            {
+                address = address + offset;
+            }
+
+            XSP(Rn, address);
+        }
+    }
+}
+
+void load_store_register_imm_unscaled(int size, int VR, int opc, int imm9, int wb,int Rn, int Rt)
+{
+    if (size == 3 && VR == 0 && opc == 2)
+    {
+        //PREFETCH
+
+        return;
+    }
+
+    int is_vector = VR == 1;
+
+    int wback = wb != 0;
+    int postindex = wb == 1;
+
+    int offset = sign_extend(imm9, 9);
+
+    //0 load
+    //1 store
+
+    if (is_vector)
+    {
+        int memop;
+        int regsize;
+        int _signed;
+
+        int scale = (bit_c(opc, 1) << 2) | size;
+
+        if (opc & 1) memop = 0 else memop = 1
+        int datasize = 8 << scale;
+
+        o64 address = XSP(Rn);
+
+        if (!postindex)
+        {
+            address = address + offset;
+        }
+
+        o_type O = switch datasize { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64, case 128 : o128 };
+
+        if (memop == 1)
+        {
+            O data = V(Rt);
+
+            mem<O>(address, data);
+        }
+        else
+        {
+            O data = mem<O>(address);
+
+            V(Rt, data);
+        }
+
+        if (wback)
+        {
+            if (postindex)
+            {
+                address = address + offset;
+            }
+
+            XSP(Rn, address);
+        }
+    }
+    else
+    {
+        int memop;
+        int regsize;
+        int _signed;
+
+        int scale = size;
+
+        if (bit_c(opc,1) == 0)
+        {
+            if (opc & 1) memop = 0 else memop = 1
+            if (size == 3) regsize = 64 else regsize = 32
+            _signed = false;
+        }
+        else
+        {
+            if (size == 3)
+            {
+                undefined();
+            }
+            else
+            {
+                memop = 0;
+                if (opc & 1) regsize = 32 else regsize = 64
+                _signed = true;
+            }
+        }
+
+        int datasize = 8 << scale;
+
+        o64 address = XSP(Rn);
+
+        if (!postindex)
+        {
+            address = address + offset;
+        }
+
+        o_type S = switch datasize { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64 };
+        o_type R = switch regsize { case 32 : o32, case 64 : o64 };
+
+        if (memop == 1)
+        {
+            o64 data = X(Rt);
+
+            mem<S>(address, (S)data);
+        }
+        else
+        {
+            o64 n = mem<S>(address);
+
+            if (_signed)
+            {
+                n = extend R (S)n;
+            }
+
+            X(Rt, n);
+        }
+
+        if (wback)
+        {
+            if (postindex)
+            {
+                address = address + offset;
+            }
+
+            XSP(Rn, address);
+        }
+    }
+}

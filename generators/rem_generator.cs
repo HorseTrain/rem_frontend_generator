@@ -34,10 +34,18 @@ namespace rem_frontend_generator.generators
         {
             switch (source)
             {
-                case generic_runtime_variable_type grvt: return grvt.name;
+                case i_generic_name ign:
+                {
+                    if (generic_remap.ContainsKey(ign.name))
+                    {
+                        return generic_remap[ign.name];
+                    }
+
+                    return ign.name;
+                }
+
                 case runtime_variable rv: return rv.size.ToString();
-                case generic_declaration gd: return gd.name;
-                case compile_time_type ct: return compile_time_operand_type;
+                case compile_time_type: return compile_time_operand_type;
                 default: throw new Exception();
             }
         }
@@ -59,17 +67,17 @@ namespace rem_frontend_generator.generators
                 {
                     switch (source)
                     {
-                        case generic_runtime_variable_type grt: return grt.name;
-                        case runtime_variable rvs: return $"u{rvs.size}_t";
-                        case generic_declaration gd:
+                        case i_generic_name ign:
                         {
-                            if (generic_remap.ContainsKey(gd.name))
+                            if (generic_remap.ContainsKey(ign.name))
                             {
-                                return generic_remap[gd.name];
+                                return generic_remap[ign.name];
                             }
 
-                            return gd.name;
-                        }; break;
+                            return ign.name;
+                        }
+
+                        case runtime_variable rvs: return $"u{rvs.size}_t";
                         default: throw new Exception();
                     }
                 }
@@ -141,6 +149,12 @@ namespace rem_frontend_generator.generators
                     case "sdiv": return "ir_divide_signed";
                     case "/": return "ir_divide_unsigned";
                     case "&&": return "ir_bitwise_and";
+                    case "*": return "ir_multiply";
+                    case "umulh": return "ir_multiply_hi_unsigned";
+                    case "smulh": return "ir_multiply_hi_signed";
+                    case "!": return "ir_logical_not";
+                    case "!=": return "ir_compare_not_equal";
+                    case ">": return "ir_compare_greater_unsigned";
                     default: throw new Exception();
                 }
             }
@@ -167,7 +181,7 @@ namespace rem_frontend_generator.generators
 
             if (to_type != null)
             {
-                result = $"({get_explicit_rem_type(to_type)}){result}";
+                result = $"({get_rem_type(to_type, true)}){result}";
             }
 
             return result;
@@ -186,13 +200,25 @@ namespace rem_frontend_generator.generators
             if (interpreted)
                 throw new Exception();
 
-            return $"ir_operand::copy_new_raw_size({source}, {get_explicit_rem_type(type)})";
+            return $"copy_new_raw_size({get_default_argument(interpreted)}, {source}, {get_explicit_rem_type(type)})";
         }
 
         string generate_object(i_ast_object data, bool interpreted, bool is_command = false)
         {
             switch (data)
             {
+                case loop lo:
+                {
+                    if (lo.loop_count.is_runtime())
+                    {
+                        throw new Exception();
+                    }
+                    else
+                    {
+                        return $"for ({generate_object(lo.loop_index, interpreted).Replace(";", " = 0;")} {lo.loop_index.variable_name} < {generate_object(lo.loop_count, interpreted)}; {lo.loop_index.variable_name}++)\n{generate_object(lo.body, interpreted)}";
+                    }
+                }; 
+
                 case scope sc:
                 {
                     string result = "{\n";
@@ -247,6 +273,11 @@ namespace rem_frontend_generator.generators
                         else if (!interpreted && vd.is_runtime() && !variable_type.types_compatible(vd.default_value.get_type(),vd.type))
                         {
                             default_value = convert_to_other_runtime(default_value, vd.type, interpreted);
+                        }
+
+                        if (!interpreted && vd.force_non_constant)
+                        {
+                            default_value = $"ssa_emit_context::emit_ssa({get_default_argument(interpreted)}, ir_move, {default_value})";
                         }
 
                         result = $"{result} = {default_value};";
@@ -311,7 +342,7 @@ namespace rem_frontend_generator.generators
                             raw_operation = sign_compile_time(raw_operation);
                         }
 
-                        return $"{raw_operation} {result}";
+                        return $"{raw_operation}{result}";
                     }
                 }; 
 
@@ -330,6 +361,9 @@ namespace rem_frontend_generator.generators
                     else
                     {
                         string raw_operation = get_operation(bo.operation, false, out bool is_signed);
+
+                        left = $"({get_rem_type(bo.get_type(), interpreted)}){left}";
+                        right = $"({get_rem_type(bo.get_type(), interpreted)}){right}";
                         
                         if (is_signed)
                         {
@@ -343,6 +377,14 @@ namespace rem_frontend_generator.generators
                         {
                             result = $"rotate_right({left},{right})";
                         }
+                        else if (raw_operation == "smulh")
+                        {
+                            result = $"multiply_hi({left},{right}, true)";
+                        }
+                        else if (raw_operation == "umulh")
+                        {
+                            result = $"multiply_hi({left},{right}, false)";
+                        }
                         else
                         {
                             result = $"{left} {raw_operation} {right}";
@@ -353,7 +395,19 @@ namespace rem_frontend_generator.generators
                             result = $"({get_rem_type(bo.get_type(), interpreted)})({result})";
                         }
 
-                        return result;
+                        while (true)
+                        {
+                            int length = result.Length;
+
+                            string to_replace = $"({get_rem_type(bo.get_type(), interpreted)})";
+
+                            result = result.Replace($"{to_replace}{to_replace}", to_replace);
+
+                            if (length == result.Length)
+                                break;
+                        }
+
+                        return $"({result})";
                     }
                 };
 
@@ -474,25 +528,23 @@ namespace rem_frontend_generator.generators
                         throw new Exception();
                     }
 
-                    if (!interpreted && lvs.r_value.is_runtime() && in_cf_runtime())
-                    {
-                        throw new Exception();
-                    }
-                    else
-                    {
-                        string value = generate_object(lvs.r_value, interpreted);
+                    string value = generate_object(lvs.r_value, interpreted);
 
-                        if (!interpreted && lvs.to_runtime_conversion_needed())
-                        {
-                            value = convert_to_runtime(value, lvs.l_value.get_type(),interpreted);
-                        }
-                        else if (!interpreted && lvs.l_value.is_runtime() && !variable_type.types_compatible(lvs.l_value.get_type(),lvs.r_value.get_type()))
-                        {
-                            value = convert_to_other_runtime(value, lvs.l_value.get_type(), interpreted);
-                        }
-
-                        return $"{generate_object(lvs.l_value,interpreted)} = {value};";
+                    if (!interpreted && lvs.to_runtime_conversion_needed())
+                    {
+                        value = convert_to_runtime(value, lvs.l_value.get_type(),interpreted);
                     }
+                    else if (!interpreted && lvs.l_value.is_runtime() && !variable_type.types_compatible(lvs.l_value.get_type(),lvs.r_value.get_type()))
+                    {
+                        value = convert_to_other_runtime(value, lvs.l_value.get_type(), interpreted);
+                    }
+
+                    if (!interpreted && lvs.force_runtime)
+                    {   
+                        return $"ssa_emit_context::move({get_default_argument(interpreted)},{generate_object(lvs.l_value,interpreted)},{value});";
+                    }
+
+                    return $"{generate_object(lvs.l_value,interpreted)} = {value};";
                 };
 
                 case number nu:
@@ -563,7 +615,31 @@ namespace rem_frontend_generator.generators
                     {
                         throw new Exception();
                     }
-                }; break;
+                };
+
+                case physical_read pr:
+                {
+                    if (interpreted)
+                    {
+                        return $"*({get_rem_type(pr.get_type(), interpreted)}*){generate_object(pr.address, interpreted)}";
+                    }
+                    else
+                    {
+                        return $"ssa_emit_context::emit_ssa({get_default_argument(interpreted)}, ir_load, {generate_object(pr.address, interpreted)}, {get_explicit_rem_type(pr.get_type())})";
+                    }
+                }
+
+                case physical_write pw:
+                {
+                    if (interpreted)
+                    {
+                        return $"*({get_rem_type(pw.value.get_type(), interpreted)}*){generate_object(pw.address, interpreted)} = {generate_object(pw.value, interpreted)};";
+                    } 
+                    else
+                    {
+                        return $"ssa_emit_context::store({get_default_argument(interpreted)}, {generate_object(pw.address, interpreted)}, {generate_object(pw.value, interpreted)});";
+                    }
+                }
 
                 default: throw new Exception();
             }
@@ -648,7 +724,6 @@ namespace rem_frontend_generator.generators
 #include ""emulator/ssa_emit_context.h""
 #include ""aarch64_context_offsets.h""
 #include ""aarch64_process.h""
-#include ""emulator/branch_type.h""
 
 struct interpreter_data
 {
@@ -658,13 +733,30 @@ struct interpreter_data
     int                 branch_type;
 };
 
+struct uint128_t
+{
+    uint64_t data[2];
+
+    operator uint64_t ()
+    {
+        return data[0];
+    }
+
+    uint128_t (uint64_t source)
+    {
+        data[0] = source;
+        data[1] = 0;
+    }
+};
+
 void init_aarch64_decoder(aarch64_process* process);
 
 ");
             cpp_file = new StringBuilder(@"#include ""aarch64_impl.h""
 #include ""string.h""
+#include ""tools/big_number.h""
 
-static void append_table(aarch64_process* process, std::string encoding, void* emit, void* interperate)
+static void append_table(aarch64_process* process, std::string encoding, void* emit, void* interperate, std::string name)
 {
 	uint32_t instruction = 0;
 	uint32_t mask = 0;
@@ -686,7 +778,7 @@ static void append_table(aarch64_process* process, std::string encoding, void* e
 		}
 	}
 
-	fixed_length_decoder<uint32_t>::insert_entry(&process->decoder, instruction, mask, emit, interperate);
+	fixed_length_decoder<uint32_t>::insert_entry(&process->decoder, instruction, mask, emit, interperate, name);
 }
 
 template <typename T>
@@ -708,6 +800,42 @@ T rotate_right(T src, int ammount)
 	int INT_BITS = sizeof(T) * 8;
 
 	return (src >> ammount)|(src << (INT_BITS - ammount));
+}
+
+static ir_operand copy_new_raw_size(ssa_emit_context* ctx, ir_operand source, uint64_t new_size)
+{
+	bool div = new_size >= int128;
+	bool siv = ir_operand::is_vector(&source);
+
+	if (div == siv)
+	{
+		if (new_size >= ir_operand::get_raw_size(&source))
+		{
+			return source;
+		} 
+		else
+		{
+			source = ir_operand::copy_new_raw_size(source, new_size);
+
+			return ssa_emit_context::emit_ssa(ctx, ir_move, source);
+		}
+	}
+	else if (div && !siv)
+	{	
+		ir_operand result = ssa_emit_context::emit_ssa(ctx, ir_vector_zero, int128);
+
+		ir_operation_block::emitds(ctx->ir, ir_vector_insert, result, result, source, ir_operand::create_con(0), ir_operand::create_con(64));
+
+		return result;
+	}
+	else
+	{
+		ir_operand result = ssa_emit_context::create_local(ctx, new_size);
+		
+		ir_operation_block::emitds(ctx->ir, ir_vector_extract, result, source, ir_operand::create_con(0), ir_operand::create_con(64));
+
+		return result;
+	}
 }
 
 ");
@@ -742,7 +870,7 @@ T rotate_right(T src, int ammount)
                     throw new Exception();
                 }
 
-                table_create_function += $"\tappend_table(process, \"{instruction}\", (void*)emit_{get_name_with_interpreted(f.function_name, false)}, (void*)call_{get_name_with_interpreted(f.function_name, true)});\n";
+                table_create_function += $"\tappend_table(process, \"{instruction}\", (void*)emit_{get_name_with_interpreted(f.function_name, false)}, (void*)call_{get_name_with_interpreted(f.function_name, true)}, \"{f.function_name}\");\n";
 
                 {
                     cpp_file.Append($"static void call_{get_name_with_interpreted(f.function_name, true)}({get_default_parameter(true)}, uint32_t instruction)\n{{\n");

@@ -61,6 +61,26 @@ public interface IlanguageListener : IParseTreeListener {
 	/// <param name="context">The parse tree.</param>
 	void ExitLine([NotNull] languageParser.LineContext context);
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.hostMemoryRead"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterHostMemoryRead([NotNull] languageParser.HostMemoryReadContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.hostMemoryRead"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitHostMemoryRead([NotNull] languageParser.HostMemoryReadContext context);
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.hostMemoryWrite"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterHostMemoryWrite([NotNull] languageParser.HostMemoryWriteContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.hostMemoryWrite"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitHostMemoryWrite([NotNull] languageParser.HostMemoryWriteContext context);
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="languageParser.semiColin"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
@@ -130,6 +150,16 @@ public interface IlanguageListener : IParseTreeListener {
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	void ExitLValueSet([NotNull] languageParser.LValueSetContext context);
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.runtimeSet"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterRuntimeSet([NotNull] languageParser.RuntimeSetContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.runtimeSet"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitRuntimeSet([NotNull] languageParser.RuntimeSetContext context);
 	/// <summary>
 	/// Enter a parse tree produced by <see cref="languageParser.ifStatement"/>.
 	/// </summary>

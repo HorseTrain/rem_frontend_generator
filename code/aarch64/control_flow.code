@@ -1,0 +1,7 @@
+/*
+    BR n
+*/
+fl_instruction 32 br (1101011000011111000000 Rn_5 00000)
+{
+    branch_long_universal(Rn, false);
+}

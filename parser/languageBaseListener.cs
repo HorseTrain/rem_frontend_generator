@@ -72,6 +72,30 @@ public partial class languageBaseListener : IlanguageListener {
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitLine([NotNull] languageParser.LineContext context) { }
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.hostMemoryRead"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterHostMemoryRead([NotNull] languageParser.HostMemoryReadContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.hostMemoryRead"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitHostMemoryRead([NotNull] languageParser.HostMemoryReadContext context) { }
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.hostMemoryWrite"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterHostMemoryWrite([NotNull] languageParser.HostMemoryWriteContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.hostMemoryWrite"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitHostMemoryWrite([NotNull] languageParser.HostMemoryWriteContext context) { }
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="languageParser.semiColin"/>.
 	/// <para>The default implementation does nothing.</para>
 	/// </summary>
@@ -155,6 +179,18 @@ public partial class languageBaseListener : IlanguageListener {
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitLValueSet([NotNull] languageParser.LValueSetContext context) { }
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.runtimeSet"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterRuntimeSet([NotNull] languageParser.RuntimeSetContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.runtimeSet"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitRuntimeSet([NotNull] languageParser.RuntimeSetContext context) { }
 	/// <summary>
 	/// Enter a parse tree produced by <see cref="languageParser.ifStatement"/>.
 	/// <para>The default implementation does nothing.</para>

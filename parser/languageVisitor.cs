@@ -50,6 +50,18 @@ public interface IlanguageVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <return>The visitor result.</return>
 	Result VisitLine([NotNull] languageParser.LineContext context);
 	/// <summary>
+	/// Visit a parse tree produced by <see cref="languageParser.hostMemoryRead"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitHostMemoryRead([NotNull] languageParser.HostMemoryReadContext context);
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="languageParser.hostMemoryWrite"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitHostMemoryWrite([NotNull] languageParser.HostMemoryWriteContext context);
+	/// <summary>
 	/// Visit a parse tree produced by <see cref="languageParser.semiColin"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
@@ -91,6 +103,12 @@ public interface IlanguageVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
 	Result VisitLValueSet([NotNull] languageParser.LValueSetContext context);
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="languageParser.runtimeSet"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitRuntimeSet([NotNull] languageParser.RuntimeSetContext context);
 	/// <summary>
 	/// Visit a parse tree produced by <see cref="languageParser.ifStatement"/>.
 	/// </summary>

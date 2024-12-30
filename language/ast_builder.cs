@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Reflection.Metadata;
 using Antlr4.Runtime.Misc;
 using Antlr4.Runtime.Tree;
 using static languageParser;
@@ -133,6 +134,8 @@ namespace rem_frontend_generator.language
             }
             else if (context.ChildCount == 3)
             {
+                string type = context.GetText();
+
                 expression left = Visit(context.expression(0)) as expression;
                 expression right = Visit(context.expression(1)) as expression;
 
@@ -144,6 +147,37 @@ namespace rem_frontend_generator.language
             }
         }
 
+        public override i_ast_object VisitHostMemoryRead([NotNull] HostMemoryReadContext context)
+        {
+            return new physical_read(Visit(context.variableType()) as variable_type,Visit(context.expression()) as expression);
+        }
+
+        public override i_ast_object VisitHostMemoryWrite([NotNull] HostMemoryWriteContext context)
+        {
+            return new physical_write(Visit(context.expression(0)) as expression, Visit(context.expression(1)) as expression);
+        }
+
+        public override i_ast_object VisitLoopStatement([NotNull] LoopStatementContext context)
+        {
+            expression count = Visit(context.expression()) as expression;
+            string identifier = context.identifier().GetText();
+
+            loop result = new loop(count, top_scope());
+
+            push_scope(result);
+
+            variable_declaration declaration = new variable_declaration(count.get_type(), identifier, false);
+
+            result.loop_index = declaration;
+            result.add_object_to_scope(declaration.variable_name, declaration);
+
+            result.body = Visit(context.scope()) as scope;
+
+            pop_scope();
+
+            return result;
+        }
+
         public override i_ast_object VisitUnaryExpression([NotNull] UnaryExpressionContext context)
         {
             return new unary_operation(context.GetChild(0).GetText(), Visit(context.baseExpression()) as expression);
@@ -152,6 +186,20 @@ namespace rem_frontend_generator.language
         public override i_ast_object VisitCast([NotNull] CastContext context)
         {
             return new cast(Visit(context.variableType()) as variable_type, Visit(context.expression()) as expression);
+        }
+
+        public override i_ast_object VisitRuntimeSet([NotNull] RuntimeSetContext context)
+        {
+            l_value_set result = new l_value_set();
+
+            result.l_value = new object_reference(top_scope().get_scoped_object(context.identifier().GetText()));
+            result.r_value = Visit(context.expression()) as expression;
+
+            result.force_runtime = true;
+
+            (result.l_value.reference as variable_declaration).force_non_constant = true;
+
+            return result;
         }
 
         public override i_ast_object VisitLValueSet([NotNull] LValueSetContext context)
@@ -257,6 +305,35 @@ namespace rem_frontend_generator.language
             }
 
             result.function_reference = function_reference;
+
+            Dictionary<string, variable_type> g_map = new Dictionary<string, variable_type>();
+            
+            for (int i = 0; i < result.generics.Count; ++i)
+            {
+                g_map.Add(function_reference.generics[i].name, result.generics[i]);
+            }
+
+            for (int i = 0; i < result.function_arguments.Count; ++i)
+            {
+                expression working = result.function_arguments[i];
+                variable_declaration parameter = result.function_reference.parameters[i];
+                variable_type parameter_type = parameter.type;
+
+                if (!parameter_type.is_runtime())
+                    continue;
+
+                if (parameter_type is generic_runtime_variable_type grvt)
+                {
+                    string type_name = grvt.name;
+
+                    parameter_type = g_map[type_name];
+                }
+
+                if (result.function_arguments[i].get_type() == parameter_type)
+                    continue;
+
+                result.function_arguments[i] = new cast(parameter_type, working);
+            }
 
             return result;
         }

@@ -20,11 +20,21 @@ line
     | variableDeclaration
     | returnStatement
     | lValueSet
+    | runtimeSet
     | ifStatement
     | functionCallLine
     | switchStatement
     | loopStatement
+    | hostMemoryWrite
     | semiColin
+    ;
+
+hostMemoryRead
+    : 'physical_read' variableType expression
+    ;
+
+hostMemoryWrite
+    : 'physical_write' expression expression
     ;
 
 semiColin
@@ -40,7 +50,7 @@ caseStatement
     ;
 
 loopStatement
-    : 'loop' expression identifier? scope
+    : 'loop' expression identifier scope
     ;
 
 switchStatement
@@ -53,6 +63,10 @@ returnStatement
 
 lValueSet
     : identifier '=' expression
+    ;
+
+runtimeSet
+    : 'set' identifier expression
     ;
 
 ifStatement
@@ -124,11 +138,12 @@ functionCall
     ;
 
 expression
-    : baseExpression
+    : functionCall
+    | hostMemoryRead
+    | baseExpression
     | unaryExpression
-    | functionCall
     | signExtend
-    | expression ('*' | '/' | 'sdiv' | '%') expression
+    | expression ('*' | '/' | 'sdiv' | 'umulh' | 'smulh') expression
     | expression ('+' | '-') expression
     | expression ('<<' | '>>' | 'sar' | 'ror') expression
     | expression ('clt' | 'cgt' | 'clte' | 'cgte' | '<' | '<=' | '>' | '>=') expression
@@ -264,3 +279,7 @@ WHITE_SPACE
 LINE_COMMENT
     : '//' ~[\r\n]* -> skip
 ;
+
+BLOB_COMMENT
+    : '/*' .*? '*/' -> skip
+    ;

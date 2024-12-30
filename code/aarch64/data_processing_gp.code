@@ -1,0 +1,706 @@
+/*
+    ADD     d, n, imm
+    SUB     d, n, imm
+    ADDS    d, n, imm
+    SUBS    d, n, imm
+*/
+fl_instruction 32 add_subtract_imm12(sf_1 op_1 S_1 100010 sh_1 imm12_12 Rn_5 Rd_5)
+{
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    O operand1 = XSP(Rn);
+    O operand2 = decode_add_subtract_imm_12(imm12, sh);
+
+    O d = add_subtract_impl<O>(operand1, operand2, S, op == 0);
+
+    if (S)
+    {
+        X(Rd, d);
+    }
+    else
+    {
+        XSP(Rd, d);
+    }
+}
+
+/*
+    ADD     d, n, m, shifted
+    SUB     d, n, m, shifted
+    ADDS    d, n, m, shifted
+    SUBS    d, n, m, shifted
+*/
+fl_instruction 32 add_subtract_shifted(sf_1 op_1 S_1 01011 shift_2 0 Rm_5 imm6_6 Rn_5 Rd_5)
+{
+    int shift_ammount = imm6;
+
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    O operand1 = X(Rn);
+    O operand2 = a_shift_reg<O>(Rm, shift, shift_ammount);
+
+    O result = add_subtract_impl<O>(operand1, operand2, S, op == 0);
+
+    X(Rd, result);
+}
+
+/*
+    ADD     d, n, m, extended 
+    SUB     d, n, m, extended
+    ADDS    d, n, m, extended
+    SUBS    d, n, m, extended
+*/
+fl_instruction 32 add_subtract_extended(sf_1 op_1 S_1 01011001 Rm_5 option_3 imm3_3 Rn_5 Rd_5)
+{
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    int shift = imm3;
+    int extend_type = option;
+
+    O operand1 = XSP(Rn);
+    O operand2 = a_extend_reg<O>(Rm, extend_type, shift);
+
+    O result = add_subtract_impl<O>(operand1, operand2, S, op == 0);
+
+    if (S)
+    {
+        X(Rd, result);
+    }
+    else
+    {
+        XSP(Rd, result);
+    }
+}
+
+/*
+    ADC d, n, m
+    SBC d, n, m
+    ADCS d, n, m
+    SBCS d, n, m
+*/
+fl_instruction 32 add_subtract_carry(sf_1 op_1 S_1 11010000 Rm_5 000000 Rn_5 Rd_5)
+{
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    O operand1 = X(Rn);
+    O operand2 = X(Rm);
+
+    O result = add_subtract_carry_impl<O>(operand1, operand2, S == 1, op == 0, (O)_sys(2));
+
+    X(Rd, result);
+}
+
+/*
+    LSLV d, n, m
+    LSRV d, n, m
+    ASRV d, n, m
+    RORV d, n, m
+*/
+fl_instruction 32 shift_variable(sf_1 0011010110  Rm_5 0010 op2_2 Rn_5 Rd_5)
+{
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    O operand1 = X(Rn);
+    O operand2 = X(Rm);
+
+    int mask = (32 << sf) - 1;
+
+    O result;
+
+    operand2 = operand2 & mask;
+
+    if (op2 == 0)
+    {
+        result = operand1 << operand2;
+    }
+    else if (op2 == 1)
+    {
+        result = operand1 >> operand2;
+    }
+    else if (op2 == 2)
+    {
+        result = operand1 sar operand2;
+    }
+    else
+    {
+        result = operand1 ror operand2;
+    }
+
+    X(Rd, result);
+}
+
+/*
+    SMADDL d, n, m, a
+    SMSUBL d, n, m, a
+    UMADDL d, n, m, a
+    UMSUBL d, n, m, a
+*/
+fl_instruction 32 multiply_with_32(10011011 U_1 01 Rm_5 o0_1 Ra_5 Rn_5 Rd_5)
+{
+    o64 operand1 = X(Rn);
+    o64 operand2 = X(Rm);
+    o64 operand3 = X(Ra); 
+
+    int is_add = o0 == 0;
+    int is_signed = U == 0;
+
+    if (is_signed)
+    {
+        operand1 = extend o64 (o32)operand1;
+        operand2 = extend o64 (o32)operand2;
+    }
+    else
+    {
+        operand1 = operand1 & UINT32_MAX;
+        operand2 = operand2 & UINT32_MAX;
+    }
+
+    o64 result;
+
+    if (is_add)
+    {
+        result = operand3 + (operand1 * operand2);
+    }
+    else
+    {
+        result = operand3 - (operand1 * operand2);
+    }
+
+    X(Rd, result);
+}
+
+/*
+    UMULH d, n, m
+    SMULH d, n, m
+*/
+fl_instruction 32 multiply_hi(10011011 U_1 10 Rm_5 o0_1 11111 Rn_5 Rd_5)
+{
+    o64 operand1 = X(Rn);
+    o64 operand2 = X(Rm);
+
+    int is_signed = U == 0;
+
+    o64 result;
+
+    if (is_signed)
+    {
+        result = operand1 smulh operand2;
+    }   
+    else
+    {
+        result = operand1 umulh operand2;
+    }
+
+    X(Rd, result);
+}
+
+/*
+    MADD d, n, m, a
+    MSUB d, n, m, a
+*/
+fl_instruction 32 multiply_additive(sf_1 0011011000 Rm_5 o0_1 Ra_5 Rn_5 Rd_5)
+{
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    O operand1 = X(Rn);
+    O operand2 = X(Rm);
+    O operand3 = X(Ra);
+
+    int is_add = o0 == 0;
+
+    O result;
+
+    if (is_add)
+    {
+        result = operand3 + (operand1 * operand2);
+    }
+    else
+    {
+        result = operand3 - (operand1 * operand2);
+    }
+
+    X(Rd, result);
+}
+
+/*
+    UDIV d, n, m
+    SDIV d, n, m
+*/
+fl_instruction 32 divide(sf_1 0011010110 Rm_5 00001 o1_1 Rn_5 Rd_5)
+{
+    int is_signed = o1 == 1;
+
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    O operand1 = X(Rn);
+    O operand2 = X(Rm);
+
+    O result;
+
+    if (operand2 == 0)
+    {
+        X(Rd, 0);
+    }
+    else
+    {
+        if (is_signed)
+        {
+            int min = INT64_MIN;
+
+            if (!sf)
+            {
+                min = min >> 32;
+            }
+
+            if (operand1 == min && operand2 == -1)
+            {
+                X(Rd, min);
+            }
+            else
+            {
+                X(Rd,operand1 sdiv operand2);
+            }
+        }
+        else
+        {
+            X(Rd,operand1 / operand2);
+        }
+    }
+}
+
+/*
+    RBIT d, n, m
+*/
+fl_instruction 32 rbit(sf_1 101101011000000000000 Rn_5 Rd_5)
+{
+    int datasize = 32 << sf;
+
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    O operand = X(Rn);
+    O result = 0;
+
+    loop (datasize) i
+    {
+        O working = (operand >> i) & 1;
+
+        result = result | (working << (datasize - i - 1));
+    }
+
+    X(Rd, result);
+}
+
+/*
+    REV16 d, n, m
+*/
+fl_instruction 32 rev16(sf_1 101101011000000000001 Rn_5 Rd_5)
+{   
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    int count = 2 << sf;
+
+    O working = X(Rn);
+    O result = 0;
+
+    loop (count) i
+    {
+        O part = (working >> (i * 16)) & UINT16_MAX;
+
+        part = reverse_bytes<O>(part, 2);
+
+        result = result | (part << (i * 16));
+    }   
+
+    X(Rd, result);
+}
+
+/*
+    REV     d, n, m
+    REV32   d, n, m
+*/  
+fl_instruction 32 reverse(sf_1 10110101100000000001 opc_1 Rn_5 Rd_5)
+{
+    int datasize = 32 << sf;
+
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    O working = X(Rn);
+    O result;
+
+    if (sf == opc)
+    {
+        result = reverse_bytes<O>(working, 4 << sf);
+    }
+    else
+    {
+        result = reverse_bytes<O>(working, 4) | (reverse_bytes<O>(working >> 32, 4) << 32);
+    }
+
+    X(Rd, result);
+}
+
+/*
+    CLZ d, n
+    CLS d, n
+*/
+fl_instruction 32 count_leading(sf_1 10110101100000000010 s_1 Rn_5 Rd_5)
+{
+    int datasize = 32 << sf;
+
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+
+  /*THIS IS VERY VERY BAD CODE!!!
+    Eventually i want to add breaking
+    to both jit and interpreter. For now,
+    this should be fine.*/
+
+    O operand = X(Rn);
+    O result = 0;
+    O done = false;
+    O sig_bit;
+
+    if (s)
+    {
+        sig_bit = (operand >> (datasize - 1)) & 1;
+        datasize = datasize - 1;
+    }
+
+    loop (datasize) i
+    {
+        O working = (operand >> (datasize - i - 1)) & 1;
+
+        if (s)
+        {
+            if (working != sig_bit)
+            {
+                set done 1;
+            }
+        }
+        else if (working)
+        {
+            set done 1;
+        }
+
+        if (!done)
+        {
+            set result result + 1;
+        }
+    }
+
+    X(Rd, result);
+}
+
+/*
+    EXTR d, n, m, imm
+*/
+fl_instruction 32 extr(sf_1 00100111 N_1 0 Rm_5 imms_6 Rn_5 Rd_5)
+{
+    int datasize = 32 << sf;
+
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    O operand1 = X(Rn);
+    O operand2 = X(Rm);
+    int lsb = imms;
+
+    O result;
+
+    if (lsb == 0)
+    {
+        result = operand2;
+    }
+    else if (Rn == Rm)
+    {
+        result = operand1 ror lsb;
+    }
+    else
+    {
+        result = (operand2 >> lsb) | (operand1 << (datasize - lsb));
+    }
+
+    X(Rd, result);
+}
+
+/*
+    SBFM d, n, imm, imm
+    BFM d, n, imm, imm
+    UBFM d, n, imm, imm
+*/
+fl_instruction 32 bitfield(sf_1 opc_2 100110 N_1 immr_6 imms_6 Rn_5 Rd_5)
+{
+    int datasize = 32 << sf;
+
+    int tmask = decode_bitmask_tmask(N, imms, immr, false, datasize, true);
+    int wmask = decode_bitmask_tmask(N, imms, immr, false, datasize, false);
+
+    int inzero;
+    int _extend;
+
+    if (opc == 0)
+    {
+        inzero = true;
+        _extend = true;
+    }
+    else if (opc == 1)
+    {
+        inzero = false;
+        _extend = false;
+    }
+    else if (opc == 2)
+    {
+        inzero = true;
+        _extend = false;
+    }
+    else
+    {
+        undefined();
+    }
+
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    O dst;
+    O src = X(Rn);
+
+    if (inzero)
+    {
+        dst = 0;
+    }
+    else
+    {
+        dst = X(Rd);
+    }
+    
+    O bot = (dst & ~wmask) | ((src ror immr) & wmask);
+
+    O top;
+
+    if (_extend)
+    {
+        top = 0 - ((src >> imms) & 1);
+    }
+    else
+    {
+        top = dst;
+    }
+
+    X(Rd, (top & ~tmask) | (bot & tmask));
+}
+
+/*
+    AND d, n, imm
+    ORR d, n, imm
+    EOR d, n, imm
+*/
+fl_instruction 32 logical_immediate(sf_1 opc_2 100100 N_1 immr_6 imms_6 Rn_5 Rd_5)
+{
+    int datasize = 32 << sf;
+
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    O operand1 = X(Rn);
+    O operand2 = decode_bitmask_tmask(N, imms, immr, true, datasize, false);
+
+    O result;
+
+    if (opc == 0)
+    {
+        result = operand1 & operand2;
+    }
+    else if (opc == 1)
+    {
+        result = operand1 | operand2;
+    }
+    else if (opc == 2)
+    {
+        result = operand1 ^ operand2;
+    }
+    else if (opc == 3)
+    {
+        result = operand1 & operand2;
+
+        X(Rd, result);
+
+        _sys(0, result clt 0);
+        _sys(1, result == 0);
+        _sys(2, 0);
+        _sys(3, 0);
+
+        return;
+    }
+
+    XSP(Rd, result);
+}
+
+/*
+    AND d, n, m, shifted
+    EOR d, n, m, shifted
+    ORR d, n, m, shifted
+    BIC d, n, m, shifted
+    EON d, n, m, shifted
+    ORN d, n, m, shifted
+*/
+fl_instruction 32 logical_shifted (sf_1 opc_2 01010 shift_2 N_1 Rm_5 imm6_6 Rn_5 Rd_5)
+{
+    int shift_type = shift;
+    int shift_ammount = imm6;
+
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    O operand1 = X(Rn);
+    O operand2 = a_shift_reg<O>(Rm, shift_type, shift_ammount);
+
+    if (N)
+    {
+        operand2 = ~operand2;
+    }
+
+    O result;
+
+    if (opc == 0 || opc == 3)
+    {
+        result = operand1 & operand2;
+
+        if (opc == 3)
+        {
+            _sys(0, result clt 0);
+            _sys(1, result == 0);
+            _sys(2, 0);
+            _sys(3, 0);
+        }
+    }
+    else if (opc == 1)
+    {
+        result = operand1 | operand2;
+    }
+    else if (opc == 2)
+    {
+        result = operand1 ^ operand2;
+    }
+
+    X(Rd, result);
+}
+
+/*
+    CSEL    d, n, m, cond
+    CSNEG   d, n, m, cond
+    CSINC   d, n, m, cond
+    CSINV   d, n, m, cond
+*/
+fl_instruction 32 conditional_select(sf_1 op_1 S_1 11010100 Rm_5 cond_4 0 op2_1 Rn_5 Rd_5)
+{
+    int incrament = op2;
+    int invert = op;
+
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    O operand1 = X(Rn);
+    O operand2 = X(Rm);
+
+    O condition_pass = condition_holds(cond);
+
+    if (condition_pass)
+    {
+        X(Rd, operand1);
+    }
+    else
+    {
+        if (invert)
+        {
+            operand2 = ~operand2;
+        }
+
+        if (incrament)
+        {
+            operand2 = operand2 + 1;
+        }
+        
+        X(Rd, operand2);
+    }
+}
+
+/*
+    CCMP n, m, cond, nzcv
+    CCMN n, m, cond, nzcv
+    CCMP n, imm, cond, nzcv
+    CCMN n, imm, cond, nzcv
+*/
+fl_instruction 32 conditional_compare(sf_1 op_1 111010010 Rm_5 cond_4 mode_1 0 Rn_5 0 nzcv_4)
+{
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    if (condition_holds(cond))
+    {
+        O operand1 = X(Rn);
+        O operand2;
+
+        if (mode)
+        {
+            operand2 = Rm;
+        }
+        else
+        {
+            operand2 = X(Rm);
+        }
+
+        add_subtract_impl<O>(operand1, operand2, true, op == 0);
+    }
+    else
+    {
+        _sys(0, (nzcv >> 3) & 1);
+        _sys(1, (nzcv >> 2) & 1);
+        _sys(2, (nzcv >> 1) & 1);
+        _sys(3, (nzcv >> 0) & 1);
+    }
+}
+
+/*
+    MOVZ d, imm, shift
+    MOVK d, imm, shift
+    MOVN d, imm, shift
+*/
+fl_instruction 32 move_wide_immediate (sf_1 opc_2 100101 hw_2 imm16_16 Rd_5)
+{
+    int shift = hw * 16;
+    int immediate = imm16 << shift;
+
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+    
+    O result;
+
+    if (opc == 0)
+    {
+        result = ~immediate;
+    }
+    else if (opc == 3)
+    {
+        result = X(Rd);
+
+        result = result & ~(UINT16_MAX << shift);
+        result = result | immediate;
+    }
+    else
+    {
+        result = immediate;
+    }
+
+    X(Rd, result);
+}
+
+/*
+    ADR     d, imm
+    ADRP    d, imm
+*/
+fl_instruction 32 pc_rel_addressing (op_1 immlo_2 10000 immhi_19 Rd_5)
+{
+    int offset = sign_extend((immhi << 2) | immlo, 21);
+    int instruction_pc = _get_pc();
+
+    if (op)
+    {
+        offset = offset << 12;
+
+        instruction_pc = instruction_pc & 4095;
+    }
+
+    X(Rd, instruction_pc + offset);
+}

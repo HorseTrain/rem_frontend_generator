@@ -4,6 +4,24 @@ o64 _sys(int reg_id) external
 void _sys(int reg_id, o64 value) external
 void _branch_long(o64 location) external
 int _get_pc() external
+void undefined() external
+o64 translate_address(o64 address) external
+o128 V(int reg_id) external
+void V(int reg_id, o128 value) external
+
+void mem<O>(o64 address, O value)
+{
+    address = translate_address(address);
+
+    physical_write address value;
+}
+
+O mem<O>(o64 address)
+{
+    address = translate_address(address);
+
+    return physical_read O address; 
+}
 
 o64 XSP(int reg_id)
 {

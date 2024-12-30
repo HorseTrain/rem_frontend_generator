@@ -1,0 +1,312 @@
+int sign_extend(int source, int count)
+{
+    int max = 64;
+    int shift = max - count;
+
+    return (source << shift) sar shift;
+}
+
+O a_shift_reg<O>(int m, int shift_type, int ammount)
+{
+    O result = X(m);
+
+    if (shift_type == 0)
+    {
+        return result << ammount;
+    }
+    else if (shift_type == 1)
+    {
+        return result >> ammount;
+    }
+    else if (shift_type == 2)
+    {
+        return result sar ammount;
+    }
+    else
+    {
+        return result ror ammount;
+    }
+}
+
+O a_extend_reg<O>(int m, int extend_type, int shift)
+{
+    O val = X(m);
+
+    if (extend_type == 0)
+    {
+        val = val & UINT8_MAX;
+    }
+    else if (extend_type == 1)
+    {
+        val = val & UINT16_MAX;
+    }
+    else if (extend_type == 2)
+    {
+        val = val & UINT32_MAX;
+    }
+    else if (extend_type == 4)
+    {
+        val = extend O (o8)val; 
+    }
+    else if (extend_type == 5)
+    {
+        val = extend O (o16)val; 
+    }
+    else if (extend_type == 6)
+    {
+        val = extend O (o32)val; 
+    }
+
+    return val << shift;
+}
+
+O reverse_bytes<O>(O source, int byte_count)
+{
+    O result = 0;
+
+    loop (byte_count) i
+    {
+        O working = (source >> (i * 8)) & UINT8_MAX;
+
+        result = result | (working << ((byte_count - i - 1) * 8));
+    }
+
+    return result;
+}
+
+int highest_bit_set_c(int src, int size)
+{
+    loop (size) i
+    {
+        int bit_check = size - i - 1;
+
+        int bit = (src >> bit_check) & 1;
+
+        if (bit)
+        {
+            return bit_check;
+        }
+    }
+
+    return -1;
+}
+
+int ones(int size)
+{
+    if (size == 64)
+    {
+        return UINT64_MAX;
+    }
+
+    return (1 << size) - 1;
+}
+
+int replicate_c(int source, int source_size, int count)
+{
+    int result = 0;
+
+    loop (count) i
+    {
+        result = result | ((source & ones(source_size)) << (i * source_size));
+    }
+
+    return result;
+}
+
+int bits_c(int source, int top, int bottom)
+{
+    top = top + 1;
+    int size = top - bottom;
+    int mask = ones(size);
+
+    return (source >> bottom) & mask;
+}
+
+int bit_c(int source, int bit)
+{
+    return (source >> bit) & 1;
+}
+
+int rotate_right_bits(int source, int ammount, int bit_count)
+{
+    source = source & ones(bit_count);
+
+    return ((source >> ammount)|(source << (bit_count - ammount)));
+}
+
+//TODO: Add tuples
+int decode_bitmask_tmask(int immN, int imms, int immr, int immediate, int M, int return_tmask)
+{
+    int levels;
+
+    int len = highest_bit_set_c((immN << 6) | (~imms & ones(6)), 7);
+
+    if (len < 1)
+    {
+        undefined();
+    }
+
+    levels = ones(len);
+
+    if (immediate && (imms & levels) == levels)
+    {
+        undefined();
+    }
+
+    int s = imms & levels;
+    int r = immr & levels;
+
+    int diff = s - r;
+
+    int esize = 1 << len;
+    int d = bits_c(diff, len - 1, 0);
+
+    int welem = ones(s + 1);
+    int telem = ones(d + 1);
+
+    if (return_tmask)
+    {
+        return replicate_c(telem, esize, M / esize);
+    }
+    else
+    {
+        return replicate_c(rotate_right_bits(welem, r, esize), esize, M / esize);
+    }
+}
+
+int decode_add_subtract_imm_12(int source, int shift)
+{
+    return source << (shift * 12);
+}
+
+O add_subtract_impl<O>(O n, O m, int set_flags, int is_add)
+{
+    O d;
+
+    if (is_add)
+    {
+        d = n + m;
+    }
+    else
+    {
+        d = n - m;
+    }
+
+    if (set_flags)
+    {
+        _sys(0, d clt 0);
+        _sys(1, d == 0);
+
+        if (is_add)
+        {
+            _sys(2, d < n);
+            _sys(3, ((d ^ n) & ~(n ^ m)) clt 0);
+        }
+        else
+        {
+            _sys(2, n >= m);
+            _sys(3, ((d ^ n) & (n ^ m)) clt 0);
+        }
+    }
+
+    return d;
+}
+
+O add_subtract_carry_impl<O>(O n, O m, int set_flags, int is_add, O carry)
+{
+    O d;
+
+    if (is_add)
+    {
+        d = n + m + carry;
+    }
+    else
+    {
+        d = n - m - (carry ^ 1);
+    }
+
+    if (set_flags)
+    {
+        _sys(0, d clt 0);
+        _sys(1, d == 0);
+
+        if (is_add)
+        {
+            _sys(2, (d == n && carry) | d < n);
+            _sys(3, ((d ^ n) & ~(n ^ m)) clt 0);
+        }
+        else
+        {
+            _sys(2, (n == m && carry) | n > m);
+            _sys(3, ((d ^ n) & (n ^ m)) clt 0);
+        }
+    }
+
+    return d;
+}
+
+o8 condition_holds(int cond)
+{
+    o8 n = _sys(0);
+    o8 z = _sys(1);
+    o8 c = _sys(2);
+    o8 v = _sys(3);
+
+    int raw_condition = cond >> 1;
+
+    o8 result;
+
+    if (raw_condition == 0)
+    {
+        result = z == 1;
+    }
+    else if (raw_condition == 1)
+    {
+        result = c == 1;
+    }
+    else if (raw_condition == 2)
+    {
+        result = n == 1;
+    }
+    else if (raw_condition == 3)
+    {
+        result = v == 1;
+    }
+    else if (raw_condition == 4)
+    {
+        result = c == 1 && z == 0;
+    }
+    else if (raw_condition == 5)
+    {
+        result = n == v;
+    }
+    else if (raw_condition == 6)
+    {
+        result = (n == v) && z == 0;
+    }
+    else
+    {
+        result = true;
+    }
+
+    if ((cond & 1) && cond != 15)
+    {
+        result = result ^ 1;
+    }
+
+    return result;
+}
+
+void branch_long_universal(int Rn, int link)
+{
+    o64 branch_location = X(Rn);
+
+    if (link)
+    {
+        o64 link_address = _get_pc() + 4;
+        
+        X(30, link_address);
+    }
+
+    _branch_long(branch_location);
+}
