@@ -3,6 +3,8 @@ void _x(int reg_id, o64 value) external
 o64 _sys(int reg_id) external
 void _sys(int reg_id, o64 value) external
 void _branch_long(o64 location) external
+void _branch_short(int location) external
+void _branch_conditional(int yes, int no, o64 condition) external
 int _get_pc() external
 void undefined() external
 o64 translate_address(o64 address) external

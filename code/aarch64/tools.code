@@ -60,6 +60,38 @@ O a_extend_reg<O>(int m, int extend_type, int shift)
     return val << shift;
 }
 
+o64 a_extend_reg_64(int m, int extend_type, int shift)
+{
+    o64 val = X(m);
+
+    if (extend_type == 0)
+    {
+        val = val & UINT8_MAX;
+    }
+    else if (extend_type == 1)
+    {
+        val = val & UINT16_MAX;
+    }
+    else if (extend_type == 2)
+    {
+        val = val & UINT32_MAX;
+    }
+    else if (extend_type == 4)
+    {
+        val = extend o64 (o8)val; 
+    }
+    else if (extend_type == 5)
+    {
+        val = extend o64 (o16)val; 
+    }
+    else if (extend_type == 6)
+    {
+        val = extend o64 (o32)val; 
+    }
+
+    return val << shift;
+}
+
 O reverse_bytes<O>(O source, int byte_count)
 {
     O result = 0;
