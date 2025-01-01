@@ -723,11 +723,11 @@ namespace rem_frontend_generator.generators
             header_file = new StringBuilder(@"#include <inttypes.h>
 #include ""emulator/ssa_emit_context.h""
 #include ""aarch64_context_offsets.h""
-#include ""aarch64_process.h""
+#include ""emulator/guest_process.h""
 
 struct interpreter_data
 {
-    aarch64_process*    process_context;
+    guest_process*    process_context;
     void*               register_data;
     uint64_t            current_pc;
     int                 branch_type;
@@ -749,14 +749,14 @@ struct uint128_t
     }
 };
 
-void init_aarch64_decoder(aarch64_process* process);
+void init_aarch64_decoder(guest_process* process);
 
 ");
             cpp_file = new StringBuilder(@"#include ""aarch64_impl.h""
 #include ""string.h""
 #include ""tools/big_number.h""
 
-static void append_table(aarch64_process* process, std::string encoding, void* emit, void* interperate, std::string name)
+static void append_table(guest_process* process, std::string encoding, void* emit, void* interperate, std::string name)
 {
 	uint32_t instruction = 0;
 	uint32_t mask = 0;
@@ -840,7 +840,7 @@ static ir_operand copy_new_raw_size(ssa_emit_context* ctx, ir_operand source, ui
 
 ");
 
-            string table_create_function = $"void init_aarch64_decoder(aarch64_process* process)\n{{\n";
+            string table_create_function = $"void init_aarch64_decoder(guest_process* process)\n{{\n";
 
             foreach (function f in sf.functions.Values)
             {
