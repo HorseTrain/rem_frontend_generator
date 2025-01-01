@@ -13,6 +13,14 @@ topLevelDeclarations
     : functionDeclaration
     | instructionDeclaration
     ;
+
+elementInsert
+    : 'elm' identifier number number expression
+    ;
+
+elementExtract
+    : 'elm' identifier number number
+    ;
     
 line
     : scope
@@ -27,6 +35,7 @@ line
     | loopStatement
     | hostMemoryWrite
     | semiColin
+    | elementInsert
     ;
 
 hostMemoryRead
@@ -143,6 +152,7 @@ expression
     | baseExpression
     | unaryExpression
     | signExtend
+    | elementExtract
     | expression ('*' | '/' | 'sdiv' | 'umulh' | 'smulh') expression
     | expression ('+' | '-') expression
     | expression ('<<' | '>>' | 'sar' | 'ror') expression

@@ -60,6 +60,30 @@ public partial class languageBaseListener : IlanguageListener {
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitTopLevelDeclarations([NotNull] languageParser.TopLevelDeclarationsContext context) { }
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.elementInsert"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterElementInsert([NotNull] languageParser.ElementInsertContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.elementInsert"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitElementInsert([NotNull] languageParser.ElementInsertContext context) { }
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.elementExtract"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterElementExtract([NotNull] languageParser.ElementExtractContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.elementExtract"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitElementExtract([NotNull] languageParser.ElementExtractContext context) { }
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="languageParser.line"/>.
 	/// <para>The default implementation does nothing.</para>
 	/// </summary>

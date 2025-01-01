@@ -44,6 +44,18 @@ public interface IlanguageVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <return>The visitor result.</return>
 	Result VisitTopLevelDeclarations([NotNull] languageParser.TopLevelDeclarationsContext context);
 	/// <summary>
+	/// Visit a parse tree produced by <see cref="languageParser.elementInsert"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitElementInsert([NotNull] languageParser.ElementInsertContext context);
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="languageParser.elementExtract"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitElementExtract([NotNull] languageParser.ElementExtractContext context);
+	/// <summary>
 	/// Visit a parse tree produced by <see cref="languageParser.line"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>

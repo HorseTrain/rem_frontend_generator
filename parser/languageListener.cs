@@ -51,6 +51,26 @@ public interface IlanguageListener : IParseTreeListener {
 	/// <param name="context">The parse tree.</param>
 	void ExitTopLevelDeclarations([NotNull] languageParser.TopLevelDeclarationsContext context);
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.elementInsert"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterElementInsert([NotNull] languageParser.ElementInsertContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.elementInsert"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitElementInsert([NotNull] languageParser.ElementInsertContext context);
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.elementExtract"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterElementExtract([NotNull] languageParser.ElementExtractContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.elementExtract"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitElementExtract([NotNull] languageParser.ElementExtractContext context);
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="languageParser.line"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
