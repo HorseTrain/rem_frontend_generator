@@ -1,0 +1,36 @@
+int lowest_bit_set_c(int source)
+{
+    int size = 32;
+
+    loop (size) i
+    {
+        int working_bit = (source >> i) & 1;
+
+        if (working_bit)
+        {
+            return i;
+        }
+    }
+
+    return size;
+}
+
+fl_instruction 32 dup_general (0 Q_1 001110000 imm5_5 000011 Rn_5 Rd_5)
+{
+    int size = lowest_bit_set_c(bits_c(imm5, 3, 0));
+
+    int esize = 8 << size;
+    int datasize = 64 << Q;
+
+    o64 element = X(Rn);
+    int elements = datasize / esize;
+
+    o128 result = vector_zero;
+
+    loop (elements) e
+    {
+        elm result e esize element;
+    }
+
+    V(Rd, result);
+}

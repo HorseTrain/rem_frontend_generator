@@ -194,6 +194,12 @@ public interface IlanguageVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <return>The visitor result.</return>
 	Result VisitFunctionCall([NotNull] languageParser.FunctionCallContext context);
 	/// <summary>
+	/// Visit a parse tree produced by <see cref="languageParser.vectorZero"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitVectorZero([NotNull] languageParser.VectorZeroContext context);
+	/// <summary>
 	/// Visit a parse tree produced by <see cref="languageParser.expression"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>

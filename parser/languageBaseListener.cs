@@ -360,6 +360,18 @@ public partial class languageBaseListener : IlanguageListener {
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitFunctionCall([NotNull] languageParser.FunctionCallContext context) { }
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.vectorZero"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterVectorZero([NotNull] languageParser.VectorZeroContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.vectorZero"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitVectorZero([NotNull] languageParser.VectorZeroContext context) { }
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="languageParser.expression"/>.
 	/// <para>The default implementation does nothing.</para>
 	/// </summary>

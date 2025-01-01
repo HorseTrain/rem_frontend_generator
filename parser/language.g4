@@ -15,11 +15,11 @@ topLevelDeclarations
     ;
 
 elementInsert
-    : 'elm' identifier number number expression
+    : 'elm' expression expression expression expression
     ;
 
 elementExtract
-    : 'elm' identifier number number
+    : 'elm' expression expression expression
     ;
     
 line
@@ -146,6 +146,10 @@ functionCall
     : identifier genericImpl? '(' (expression (',' expression)*)? ')'
     ;
 
+vectorZero
+    : 'vector_zero'
+    ;
+
 expression
     : functionCall
     | hostMemoryRead
@@ -153,6 +157,7 @@ expression
     | unaryExpression
     | signExtend
     | elementExtract
+    | vectorZero
     | expression ('*' | '/' | 'sdiv' | 'umulh' | 'smulh') expression
     | expression ('+' | '-') expression
     | expression ('<<' | '>>' | 'sar' | 'ror') expression

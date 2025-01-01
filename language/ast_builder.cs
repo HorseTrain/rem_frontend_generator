@@ -97,6 +97,21 @@ namespace rem_frontend_generator.language
             }
         }
 
+        public override i_ast_object VisitVectorZero([NotNull] VectorZeroContext context)
+        {
+            return new vector_zero(o128);
+        }
+
+        public override i_ast_object VisitElementExtract([NotNull] ElementExtractContext context)
+        {
+            return new element_extract(Visit(context.expression(0)) as expression, Visit(context.expression(1)) as expression, Visit(context.expression(2)) as expression, o64, o128);
+        }
+
+        public override i_ast_object VisitElementInsert([NotNull] ElementInsertContext context)
+        {
+            return new element_insert(Visit(context.expression(0)) as expression, Visit(context.expression(1)) as expression, Visit(context.expression(2)) as expression, Visit(context.expression(3)) as expression, o128);
+        }
+
         public override i_ast_object VisitNumber([NotNull] NumberContext context)
         {
             number result = new number(BigInteger.Parse(context.GetText()), nonvoid_type);

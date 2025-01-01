@@ -86,3 +86,11 @@ fl_instruction 32 b_conditional(01010100 imm19_19 0 cond_4)
 
     _branch_conditional(new_location, next_location, condition_holds(cond));
 }
+
+/*
+    SVC imm
+*/
+fl_instruction 32 svc(11010100000 imm16_16 00001)
+{
+    call_supervisor(imm16);
+}

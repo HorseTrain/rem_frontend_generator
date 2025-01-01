@@ -10,6 +10,7 @@ void undefined() external
 o64 translate_address(o64 address) external
 o128 V(int reg_id) external
 void V(int reg_id, o128 value) external 
+void call_supervisor(int svc) external
 
 void mem<O>(o64 address, O value)
 {

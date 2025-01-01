@@ -641,6 +641,42 @@ namespace rem_frontend_generator.generators
                     }
                 }
 
+                case element_insert ei:
+                {
+                    if (interpreted)
+                    {
+                        return $"uint128_t::insert({generate_object(ei.source, interpreted)}, {generate_object(ei.index, interpreted)}, {generate_object(ei.size, interpreted)}, {generate_object(ei.value, interpreted)});";
+                    }
+                    else
+                    {
+                        return $"ssa_emit_context::vector_insert({get_default_argument(interpreted)},{generate_object(ei.source, interpreted)}, {generate_object(ei.index, interpreted)}, {generate_object(ei.size, interpreted)}, {generate_object(ei.value, interpreted)});";
+                    }
+                }; 
+
+                case element_extract ee:
+                {
+                    if (interpreted)
+                    {
+                        return $"uint128_t::extract({generate_object(ee.source, interpreted)}, {generate_object(ee.index, interpreted)}, {generate_object(ee.size, interpreted)});";
+                    }
+                    else
+                    {
+                        return $"ssa_emit_context::vector_extract({generate_object(ee.source, interpreted)}, {generate_object(ee.index, interpreted)}, {generate_object(ee.size, interpreted)});";
+                    }
+                }
+
+                case vector_zero:
+                {
+                    if (interpreted)
+                    {
+                        return "0";
+                    }
+                    else
+                    {
+                        return $"ssa_emit_context::vector_zero({get_default_argument(interpreted)})";
+                    }
+                }; 
+
                 default: throw new Exception();
             }
         }
@@ -746,6 +782,30 @@ struct uint128_t
     {
         data[0] = source;
         data[1] = 0;
+    }
+    
+    static void insert(uint128_t& data, int index, int size, uint64_t value)
+    {
+        switch (size)
+        {
+            case 8:     *((uint8_t*)&data + index) = value;     break;
+            case 16:    *((uint16_t*)&data + index) = value;    break;
+            case 32:    *((uint32_t*)&data + index) = value;    break;
+            case 64:    *((uint64_t*)&data + index) = value;    break;
+            default: throw 0;
+        }
+    }
+
+    static uint64_t extract(uint128_t& data, int index, int size)
+    {
+        switch (size)
+        {
+            case 8:     return *((uint8_t*)&data + index);     break;
+            case 16:    return *((uint16_t*)&data + index);    break;
+            case 32:    return *((uint32_t*)&data + index);    break;
+            case 64:    return *((uint64_t*)&data + index);    break;
+            default: throw 0;
+        }
     }
 };
 

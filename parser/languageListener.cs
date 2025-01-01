@@ -301,6 +301,16 @@ public interface IlanguageListener : IParseTreeListener {
 	/// <param name="context">The parse tree.</param>
 	void ExitFunctionCall([NotNull] languageParser.FunctionCallContext context);
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.vectorZero"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterVectorZero([NotNull] languageParser.VectorZeroContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.vectorZero"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitVectorZero([NotNull] languageParser.VectorZeroContext context);
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="languageParser.expression"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>

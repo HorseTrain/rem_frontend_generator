@@ -699,7 +699,7 @@ fl_instruction 32 pc_rel_addressing (op_1 immlo_2 10000 immhi_19 Rd_5)
     {
         offset = offset << 12;
 
-        instruction_pc = instruction_pc & 4095;
+        instruction_pc = instruction_pc & ~4095;
     }
 
     X(Rd, instruction_pc + offset);
