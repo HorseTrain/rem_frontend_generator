@@ -657,11 +657,11 @@ namespace rem_frontend_generator.generators
                 {
                     if (interpreted)
                     {
-                        return $"uint128_t::extract({generate_object(ee.source, interpreted)}, {generate_object(ee.index, interpreted)}, {generate_object(ee.size, interpreted)});";
+                        return $"uint128_t::extract({generate_object(ee.source, interpreted)}, {generate_object(ee.index, interpreted)}, {generate_object(ee.size, interpreted)})";
                     }
                     else
                     {
-                        return $"ssa_emit_context::vector_extract({generate_object(ee.source, interpreted)}, {generate_object(ee.index, interpreted)}, {generate_object(ee.size, interpreted)});";
+                        return $"ssa_emit_context::vector_extract({get_default_argument(interpreted)},{generate_object(ee.source, interpreted)}, {generate_object(ee.index, interpreted)}, {generate_object(ee.size, interpreted)})";
                     }
                 }
 
@@ -677,7 +677,17 @@ namespace rem_frontend_generator.generators
                     }
                 }; 
 
-                default: throw new Exception();
+                case identifier id:
+                {
+                    if (id.is_external)
+                    {
+                        return id.data;
+                    }
+
+                    throw new Exception();
+                }
+
+                default: throw new Exception(data.GetType().ToString());
             }
         }
 
@@ -763,10 +773,11 @@ namespace rem_frontend_generator.generators
 
 struct interpreter_data
 {
-    guest_process*    process_context;
+    guest_process*      process_context;
     void*               register_data;
     uint64_t            current_pc;
     int                 branch_type;
+    uint32_t            current_instruction;
 };
 
 struct uint128_t
@@ -807,9 +818,28 @@ struct uint128_t
             default: throw 0;
         }
     }
+
+    bool operator == (uint128_t other)
+    {
+        return (data[0] == other.data[0]) && (data[1] == other.data[1]);
+    }
 };
 
 void init_aarch64_decoder(guest_process* process);
+
+enum sys_registers
+{
+    nzcv_n,
+    nzcv_z,
+    nzcv_c,
+    nzcv_v,
+    fpcr,
+    fpsr,
+    exclusive_value,
+    exclusive_address,
+    thread_local_0,
+    thread_local_1
+};
 
 ");
             cpp_file = new StringBuilder(@"#include ""aarch64_impl.h""

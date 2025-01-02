@@ -256,6 +256,17 @@ namespace rem_frontend_generator.language
             return result;
         }
 
+        public override i_ast_object VisitExternalIdentifierExpression([NotNull] ExternalIdentifierExpressionContext context)
+        {
+            identifier result = new identifier();
+
+            result.data = context.identifierExpression().GetText();
+            result.is_external = true;
+            result.external_type = o64;
+
+            return result;
+        }
+
         public override i_ast_object VisitTrueFalse([NotNull] TrueFalseContext context)
         {
             if (context.GetText() == "true")

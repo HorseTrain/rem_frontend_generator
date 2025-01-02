@@ -1,0 +1,71 @@
+fl_instruction 32 msr_register (110101010001 imm15_15 Rt_5)
+{
+    o64 operand = X(Rt);
+
+    if (imm15 == 23072)
+    {
+        _sys(external fpcr, operand);
+    }
+    else if (imm15 == 23073)
+    {
+        _sys(external fpsr, operand);
+    }
+    else if (imm15 == 24194)
+    {
+        _sys(external thread_local_1, operand);
+    }
+    else if (imm15 == 24195)
+    {
+        _sys(external thread_local_0, operand);
+    }
+    else
+    {
+        undefined_with(imm15);
+    }
+}
+
+fl_instruction 32 mrs_register (110101010011 imm15_15 Rt_5)
+{
+    o64 operand;
+
+    if (imm15 == 23072)
+    {
+        operand = _sys(external fpcr);
+    }
+    else if (imm15 == 23073)
+    {
+        operand = _sys(external fpsr);
+    }
+    else if (imm15 == 24194)
+    {
+        operand = _sys(external thread_local_1);
+    }
+    else if (imm15 == 24195)
+    {
+        operand = _sys(external thread_local_0);
+    }
+    else
+    {
+        undefined_with(imm15);
+    }
+
+    X(Rt, operand);
+}
+
+//i want to implament data memory barriers eventually
+
+fl_instruction 32 hints(11010101000000110010 imm7_7 11111)
+{
+
+}
+
+fl_instruction 32 dmb(11010101000000110011 CRm_4 10111111)
+{
+
+}
+
+fl_instruction 32 clrex(11010101000000110011 CRm_4 01011111)
+{
+    _sys(external exclusive_address, -1);
+    _sys(external exclusive_value, -1);
+}

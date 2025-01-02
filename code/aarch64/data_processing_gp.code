@@ -84,7 +84,7 @@ fl_instruction 32 add_subtract_carry(sf_1 op_1 S_1 11010000 Rm_5 000000 Rn_5 Rd_
     O operand1 = X(Rn);
     O operand2 = X(Rm);
 
-    O result = add_subtract_carry_impl<O>(operand1, operand2, S == 1, op == 0, (O)_sys(2));
+    O result = add_subtract_carry_impl<O>(operand1, operand2, S == 1, op == 0, (O)_sys(external nzcv_c));
 
     X(Rd, result);
 }
@@ -520,10 +520,10 @@ fl_instruction 32 logical_immediate(sf_1 opc_2 100100 N_1 immr_6 imms_6 Rn_5 Rd_
 
         X(Rd, result);
 
-        _sys(0, result clt 0);
-        _sys(1, result == 0);
-        _sys(2, 0);
-        _sys(3, 0);
+        _sys(external nzcv_n, result clt 0);
+        _sys(external nzcv_z, result == 0);
+        _sys(external nzcv_c, 0);
+        _sys(external nzcv_v, 0);
 
         return;
     }
@@ -562,10 +562,10 @@ fl_instruction 32 logical_shifted (sf_1 opc_2 01010 shift_2 N_1 Rm_5 imm6_6 Rn_5
 
         if (opc == 3)
         {
-            _sys(0, result clt 0);
-            _sys(1, result == 0);
-            _sys(2, 0);
-            _sys(3, 0);
+            _sys(external nzcv_n, result clt 0);
+            _sys(external nzcv_z, result == 0);
+            _sys(external nzcv_c, 0);
+            _sys(external nzcv_v, 0);
         }
     }
     else if (opc == 1)
@@ -646,10 +646,10 @@ fl_instruction 32 conditional_compare(sf_1 op_1 111010010 Rm_5 cond_4 mode_1 0 R
     }
     else
     {
-        _sys(0, (nzcv >> 3) & 1);
-        _sys(1, (nzcv >> 2) & 1);
-        _sys(2, (nzcv >> 1) & 1);
-        _sys(3, (nzcv >> 0) & 1);
+        _sys(external nzcv_n, (nzcv >> 3) & 1);
+        _sys(external nzcv_z, (nzcv >> 2) & 1);
+        _sys(external nzcv_c, (nzcv >> 1) & 1);
+        _sys(external nzcv_v, (nzcv >> 0) & 1);
     }
 }
 

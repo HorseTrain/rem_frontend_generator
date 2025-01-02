@@ -264,6 +264,18 @@ public partial class languageBaseListener : IlanguageListener {
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitIdentifierExpression([NotNull] languageParser.IdentifierExpressionContext context) { }
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.externalIdentifierExpression"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterExternalIdentifierExpression([NotNull] languageParser.ExternalIdentifierExpressionContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.externalIdentifierExpression"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitExternalIdentifierExpression([NotNull] languageParser.ExternalIdentifierExpressionContext context) { }
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="languageParser.baseExpression"/>.
 	/// <para>The default implementation does nothing.</para>
 	/// </summary>

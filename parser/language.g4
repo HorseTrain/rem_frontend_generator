@@ -94,8 +94,13 @@ identifierExpression
     : identifier
     ;
 
+externalIdentifierExpression
+    : 'external' identifierExpression
+    ;
+
 baseExpression
     : identifierExpression
+    | externalIdentifierExpression
     | parenthesis
     | number
     | trueFalse

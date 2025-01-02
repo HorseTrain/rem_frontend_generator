@@ -146,6 +146,12 @@ public interface IlanguageVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <return>The visitor result.</return>
 	Result VisitIdentifierExpression([NotNull] languageParser.IdentifierExpressionContext context);
 	/// <summary>
+	/// Visit a parse tree produced by <see cref="languageParser.externalIdentifierExpression"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitExternalIdentifierExpression([NotNull] languageParser.ExternalIdentifierExpressionContext context);
+	/// <summary>
 	/// Visit a parse tree produced by <see cref="languageParser.baseExpression"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>

@@ -490,3 +490,69 @@ fl_instruction 32 load_store_register_offset(size_2 111 VR_1 00 opc_2 1 Rm_5 opt
         }
     }
 }
+
+fl_instruction 32 load_store_exclusive_ordered(size_2 001000 ordered_1 L_1 0 Rs_5 o0_1 11111 Rn_5 Rt_5)
+{
+    int is_exclusive = ordered == 0;
+
+    if (L)
+    {
+        load_exclusive(is_exclusive, size, Rn, Rt);
+    }
+    else
+    {
+        store_exclusive(is_exclusive, size, Rn, Rt, Rs);
+    }
+}
+
+void load_exclusive(int is_exclusive, int size, int Rn, int Rt)
+{
+    int datasize = 8 << size;
+
+    o64 address = XSP(Rn);
+
+    o_type S = switch datasize { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64 };
+
+    S value = mem<S>(address);
+
+    if (is_exclusive)
+    {
+        _sys(external exclusive_address, address & ~63);
+        _sys(external exclusive_value, value);
+    }
+
+    X(Rt, value);
+}
+
+void store_exclusive(int is_exclusive, int size, int Rn, int Rt, int Rs)
+{
+    int datasize = 8 << size;
+
+    o64 address = XSP(Rn);
+
+    o_type S = switch datasize { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64 };
+
+    if (is_exclusive)
+    {
+        o64 mask = ~63;
+        o64 _exclusive_address = _sys(external exclusive_address)
+
+        if (_exclusive_address == (address & mask))
+        {
+            S to_swap = X(Rt);
+            S expecting = _sys(external exclusive_value);
+
+            S cas_success = compare_and_swap(address, expecting, to_swap, datasize);
+
+            X(Rs, cas_success ^ 1);
+        }
+        else
+        {
+            X(Rs, 1);
+        }
+    }
+    else
+    {
+        mem<S>(address, X(Rt));
+    }
+}

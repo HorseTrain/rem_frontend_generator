@@ -2,15 +2,28 @@ o64 _x(int reg_id) external
 void _x(int reg_id, o64 value) external
 o64 _sys(int reg_id) external
 void _sys(int reg_id, o64 value) external
+o128 V(int reg_id) external
+void V(int reg_id, o128 value) external 
+
 void _branch_long(o64 location) external
 void _branch_short(int location) external
 void _branch_conditional(int yes, int no, o64 condition) external
 int _get_pc() external
-void undefined() external
+
 o64 translate_address(o64 address) external
-o128 V(int reg_id) external
-void V(int reg_id, o128 value) external 
 void call_supervisor(int svc) external
+
+void undefined_with(int value) external
+void undefined() external
+
+o64 _compare_and_swap(o64 physical_address, o64 expecting, o64 to_swap, int size) external
+
+o64 compare_and_swap(o64 address, o64 expecting, o64 to_swap, int size)
+{
+    address = translate_address(address);
+
+    return _compare_and_swap(address, expecting, to_swap, size);
+}
 
 void mem<O>(o64 address, O value)
 {
