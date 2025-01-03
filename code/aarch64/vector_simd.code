@@ -30,6 +30,18 @@ void dup_element(int index, int esize, int elements, int n, int d)
     V(d, result);
 }
 
+int get_flt_size(int ftype)
+{
+    if (ftype == 2)
+    {
+        return 64;
+    }
+    else
+    {
+        return 8 << (ftype ^ 2);
+    }
+}
+
 int expand_imm(int op, int cmode, int imm8)
 {
     int imm64 = 0;
@@ -120,6 +132,21 @@ int expand_imm(int op, int cmode, int imm8)
     return imm64;
 }
 
+void VPart(int n, int part, int width, o64 value)
+{
+    if (part == 0)
+    {
+        V(n, value);
+    }
+    else
+    {
+        o128 src = V(n);
+        
+        elm src 1 64 value;
+        
+        V(n, src);
+    }
+}
 
 /*
     Advanced SIMD copy
@@ -310,6 +337,62 @@ fl_instruction 32 movi_immediate (0 Q_1 op_1 0111100000 immhi_3 cmode_4 01 immlo
     else
     {
         undefined();
+    }
+
+    V(Rd, result);
+}
+
+fl_instruction 32 fmov_general(sf_1 0011110 ftype_2 10 rmode_1 11 opcode_1 000000 Rn_5 Rd_5)
+{
+    int intsize = 32 << sf;
+    int fltsize = get_flt_size(ftype);
+
+    if (intsize != fltsize)
+    {
+        undefined();
+    }
+
+    int size = intsize;
+
+    int part = rmode;
+    int int_to_float = opcode;
+
+    if (int_to_float)
+    {
+        o64 src = X(Rn);
+
+        o_type O = switch size { case 32 : o32, case 64 : o64 };
+
+        VPart(Rd, part, size, (O)src);
+    }
+    else
+    {
+        o128 v = V(Rn);
+
+        o64 src = elm v part size;
+
+        X(Rd, src);
+    } 
+}
+
+fl_instruction 32 convert_to_float(sf_1 0011110 ftype_2 10001 U_1 000000 Rn_5 Rd_5)
+{
+    int intsize = 32 << sf;
+    int fltsize = get_flt_size(ftype);
+
+    o_type I = switch intsize { case 32 : o32, case 64 : o64 };
+    o_type F = switch fltsize { case 16 : o16, case 32 : o32, case 64 : o64 };
+
+    F result;
+    I operand = X(Rn);
+
+    if (U)
+    {
+        result = to_float F operand;
+    }
+    else
+    {
+        result = to_float signed F operand;
     }
 
     V(Rd, result);

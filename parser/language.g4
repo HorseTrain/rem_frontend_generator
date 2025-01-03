@@ -135,6 +135,15 @@ unaryExpression
     : ('-' | '~' | '!') baseExpression
     ;
 
+signedSign
+    : 'signed'
+    ;
+
+floatConversions
+    : 'to_float' signedSign? variableType expression
+    | 'to_int' signedSign? variableType expression
+    ;
+
 signExtend
     : 'extend' variableType expression
     ;
@@ -160,6 +169,7 @@ expression
     | hostMemoryRead
     | baseExpression
     | unaryExpression
+    | floatConversions
     | signExtend
     | elementExtract
     | vectorZero

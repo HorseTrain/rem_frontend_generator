@@ -324,6 +324,30 @@ public partial class languageBaseListener : IlanguageListener {
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitUnaryExpression([NotNull] languageParser.UnaryExpressionContext context) { }
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.signedSign"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterSignedSign([NotNull] languageParser.SignedSignContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.signedSign"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitSignedSign([NotNull] languageParser.SignedSignContext context) { }
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.floatConversions"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterFloatConversions([NotNull] languageParser.FloatConversionsContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.floatConversions"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitFloatConversions([NotNull] languageParser.FloatConversionsContext context) { }
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="languageParser.signExtend"/>.
 	/// <para>The default implementation does nothing.</para>
 	/// </summary>

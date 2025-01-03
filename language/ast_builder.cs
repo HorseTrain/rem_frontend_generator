@@ -45,6 +45,15 @@ namespace rem_frontend_generator.language
             return new object_reference(reference);
         }
 
+        public override i_ast_object VisitFloatConversions([NotNull] FloatConversionsContext context)
+        {
+            floating_point_conversion result = new floating_point_conversion(context.GetChild(0).GetText() == "to_float", Visit(context.variableType()) as variable_type, Visit(context.expression()) as expression);
+
+            result.is_signed = context.signedSign() != null;
+
+            return result;
+        }
+
         public override i_ast_object VisitParenthesis([NotNull] ParenthesisContext context)
         {
             return new unary_operation("()", Visit(context.expression()) as expression);

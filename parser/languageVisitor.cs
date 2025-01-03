@@ -176,6 +176,18 @@ public interface IlanguageVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <return>The visitor result.</return>
 	Result VisitUnaryExpression([NotNull] languageParser.UnaryExpressionContext context);
 	/// <summary>
+	/// Visit a parse tree produced by <see cref="languageParser.signedSign"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitSignedSign([NotNull] languageParser.SignedSignContext context);
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="languageParser.floatConversions"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitFloatConversions([NotNull] languageParser.FloatConversionsContext context);
+	/// <summary>
 	/// Visit a parse tree produced by <see cref="languageParser.signExtend"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>

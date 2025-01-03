@@ -271,6 +271,26 @@ public interface IlanguageListener : IParseTreeListener {
 	/// <param name="context">The parse tree.</param>
 	void ExitUnaryExpression([NotNull] languageParser.UnaryExpressionContext context);
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.signedSign"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterSignedSign([NotNull] languageParser.SignedSignContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.signedSign"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitSignedSign([NotNull] languageParser.SignedSignContext context);
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.floatConversions"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterFloatConversions([NotNull] languageParser.FloatConversionsContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.floatConversions"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitFloatConversions([NotNull] languageParser.FloatConversionsContext context);
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="languageParser.signExtend"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>

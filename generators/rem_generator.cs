@@ -582,7 +582,7 @@ namespace rem_frontend_generator.generators
                             result += $"{test} == {generate_object(c.condition, interpreted, false)} ? {get_explicit_rem_type(c.type)} : ";
                         }
 
-                        result += "throw 0;\n";
+                        result += "0;\n";
 
                         result += generate_object(gd.body, interpreted);
 
@@ -686,6 +686,23 @@ namespace rem_frontend_generator.generators
 
                     throw new Exception();
                 }
+
+                case floating_point_conversion fpc:
+                {
+                    if (interpreted)
+                    {
+                        return $"convert_to_float<{get_rem_type(fpc.new_type,interpreted)}, {get_rem_type(fpc.source.get_type(), interpreted)}>({generate_object(fpc.source, interpreted)}, {(fpc.is_signed ? "1" : "0")})";
+                    }
+                    else
+                    {
+                        if (!fpc.is_runtime())
+                        {
+                            throw new Exception();
+                        }
+
+                        return $"ssa_emit_context::convert_to_float({get_default_argument(interpreted)},{generate_object(fpc.source, interpreted)},{get_explicit_rem_type(fpc.new_type)},{get_explicit_rem_type(fpc.source.get_type())}, {(fpc.is_signed ? "1" : "0")})";
+                    }
+                }; 
 
                 default: throw new Exception(data.GetType().ToString());
             }
@@ -840,6 +857,40 @@ enum sys_registers
     thread_local_0,
     thread_local_1
 };
+
+template <typename D, typename S>
+uint64_t convert_to_float(uint64_t source, bool is_signed)
+{
+    int des_size = sizeof(D) * 8;
+    int src_size = sizeof(S) * 8;
+
+    double temp;
+
+    if (is_signed)
+    {
+        if (src_size == 32)
+        {
+            temp = (int32_t)source;
+        }
+        else
+        {
+            temp = (int64_t)source;
+        }
+    }
+    else
+    {
+        temp = (S)source;
+    }
+
+    if (des_size == 32)
+    {
+        float temp_32 = temp;
+
+        return *(uint32_t*)&temp_32;
+    }
+
+    return *(uint64_t*)&temp;
+}
 
 ");
             cpp_file = new StringBuilder(@"#include ""aarch64_impl.h""
