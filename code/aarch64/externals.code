@@ -1,3 +1,4 @@
+//registers
 o64 _x(int reg_id) external
 void _x(int reg_id, o64 value) external
 o64 _sys(int reg_id) external
@@ -5,16 +6,36 @@ void _sys(int reg_id, o64 value) external
 o128 V(int reg_id) external
 void V(int reg_id, o128 value) external 
 
+//branching
 void _branch_long(o64 location) external
 void _branch_short(int location) external
 void _branch_conditional(int yes, int no, o64 condition) external
+
+//pc
 int _get_pc() external
 
 o64 translate_address(o64 address) external
+
 void call_supervisor(int svc) external
+o64 call_counter() external
 
 void undefined_with(int value) external
 void undefined() external
+
+//soft float
+o64 FPAdd(o64 operand1, o64 operand2, o64 FPCR, int N) external
+o64 FPSub(o64 operand1, o64 operand2, o64 FPCR, int N) external
+o64 FPMul(o64 operand1, o64 operand2, o64 FPCR, int N) external
+o64 FPDiv(o64 operand1, o64 operand2, o64 FPCR, int N) external
+o64 FPMax(o64 operand1, o64 operand2, o64 FPCR, int N) external
+o64 FPMin(o64 operand1, o64 operand2, o64 FPCR, int N) external
+o64 FPMaxNum(o64 operand1, o64 operand2, o64 FPCR, int N) external
+o64 FPMinNum(o64 operand1, o64 operand2, o64 FPCR, int N) external
+
+//Unary
+o64 FPSqrt(o64 operand, o64 FPCR, int N) external
+o64 FPNeg(o64 operand, o64 FPCR, int N) external
+o64 FPAbs(o64 operand, o64 FPCR, int N) external
 
 o64 _compare_and_swap(o64 physical_address, o64 expecting, o64 to_swap, int size) external
 

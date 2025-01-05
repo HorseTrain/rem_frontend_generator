@@ -397,3 +397,355 @@ fl_instruction 32 convert_to_float(sf_1 0011110 ftype_2 10001 U_1 000000 Rn_5 Rd
 
     V(Rd, result);
 }
+
+fl_instruction 32 floating_point_scalar(00011110 ftype_2 1 Rm_5 opcode_4 10 Rn_5 Rd_5)
+{
+    int fltsize = get_flt_size(ftype);
+
+    o64 operand1 = V(Rn);
+    o64 operand2 = V(Rm);
+    o64 result;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    if (opcode == 0)
+    {
+        result = FPMul(operand1, operand2, fpcr_state, fltsize);
+    }
+    else if (opcode == 1)
+    {
+        result = FPDiv(operand1, operand2, fpcr_state, fltsize);
+    }
+    else if (opcode == 2)
+    {
+        result = FPAdd(operand1, operand2, fpcr_state, fltsize);
+    }
+    else if (opcode == 3)
+    {   
+        result = FPSub(operand1, operand2, fpcr_state, fltsize);
+    }
+    else if (opcode == 4)
+    {
+        result = FPMax(operand1, operand2, fpcr_state, fltsize);
+    }
+    else if (opcode == 5)
+    {
+        result = FPMin(operand1, operand2, fpcr_state, fltsize);
+    }
+    else if (opcode == 6)
+    {
+        result = FPMaxNum(operand1, operand2, fpcr_state, fltsize);
+    }
+    else if (opcode == 7)
+    {
+        result = FPMinNum(operand1, operand2, fpcr_state, fltsize);
+    }
+    else if (opcode == 8)
+    {
+        result = FPMul(operand1, operand2, fpcr_state, fltsize);
+
+        result = FPNeg(result, fpcr_state, fltsize);
+    }
+    else
+    {
+        undefined_with(opcode);
+    }
+
+    o128 vector = vector_zero;
+
+    elm vector 0 fltsize result;
+
+    V(Rd, vector);
+}
+
+O vector_shift<O>(O element, O shift, int bit_count, int is_unsigned)
+{
+    O result = 0;
+
+    if (!is_unsigned)
+    {
+        element = extend o64 element;
+    }
+
+    if (shift cgte 0)
+    {
+        if (shift cgte bit_count)
+        {
+            set result 0;
+        }
+        else
+        {
+            set result element << shift;
+        }
+    }
+    else
+    {
+        set shift -shift;
+
+        if (shift cgte bit_count)
+        {
+            if (((element >> (bit_count - 1)) & 1) == 1 && !is_unsigned)
+            {
+                set result -1;
+            }
+            else
+            {
+                set result 0;
+            }
+        }
+        else
+        {
+            if (!is_unsigned)
+            {
+                set result element sar shift;
+            }
+            else
+            {
+                set result element >> shift;
+            }
+        }
+    }
+
+    return result;
+}
+
+fl_instruction 32 advanced_simd_three_same(0 Q_1 U_1 01110 size_2 1 Rm_5 opcode_5 1 Rn_5 Rd_5)
+{
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+    o128 result = vector_zero;
+
+    int esize = 8 << size;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o_type O = switch esize { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64 };
+
+    loop (elements) e
+    {
+        o64 element1 = elm operand1 e esize;
+        o64 element2 = elm operand2 e esize;
+
+        /*
+            SHADD
+            UHADD
+        */
+        if (opcode == 0)
+        {
+            if (!U)
+            {
+                element1 = extend o64 (O)element1;
+                element2 = extend o64 (O)element2;
+            }
+            
+            elm result e esize (element1 + element2) >> 1;
+        }
+        /*
+            SRHADD
+            URHADD
+        */
+        else if (opcode == 2)
+        {
+            if (!U)
+            {
+                element1 = extend o64 (O)element1;
+                element2 = extend o64 (O)element2;
+            }
+            
+            elm result e esize (element1 + element2 + 1) >> 1;
+        }
+        /*
+            SHSUB
+            UHSUB
+        */
+        else if (opcode == 4)
+        {
+            if (!U)
+            {
+                element1 = extend o64 (O)element1;
+                element2 = extend o64 (O)element2;
+            }
+            
+            elm result e esize (element1 - element2) >> 1;
+        }
+        /*
+            CMGT
+            CMHI
+        */
+        else if (opcode == 6)
+        {
+            O valid;
+
+            if (U)
+            {
+                valid = ((O)element1) > ((O)element2);
+            }
+            else
+            {
+                valid = ((O)element1) cgt ((O)element2);
+            }
+
+            elm result e esize (0 - valid);
+        }
+        /*
+            CMGE
+            CMHS
+        */
+        else if (opcode == 7)
+        {
+            O valid;
+
+            if (U)
+            {
+                valid = ((O)element1) >= ((O)element2);
+            }
+            else
+            {
+                valid = ((O)element1) cgte ((O)element2);
+            }
+
+            elm result e esize (0 - valid);
+        }
+        /*
+            SSHL
+            USHL
+        */
+        else if (opcode == 8 && size == 2)
+        {
+            O element = element1;
+            O shift = extend O (o8)element2;
+
+            element = vector_shift<O>(element, shift, esize, U);
+
+            elm result e esize element;
+        }
+        /*
+            SMAX
+            UMAX
+        */
+        else if (opcode == 12)
+        {
+            O working = 0;
+
+            if (U)
+            {
+                if (element1 > element2)
+                {
+                    set working element1;
+                }
+                else
+                {
+                    set working element2;
+                }
+            }
+            else
+            {   
+                if (((O)element1) cgt ((O)element2))
+                {
+                    set working element1;
+                }
+                else
+                {
+                    set working element2;
+                }
+            }
+
+            elm result e esize working;
+        }
+        /*
+            UMIN
+            SMIN
+        */
+        else if (opcode == 13)
+        {
+            O working = 0;
+
+            if (U)
+            {
+                if (element1 < element2)
+                {
+                    set working element1;
+                }
+                else
+                {
+                    set working element2;
+                }
+            }
+            else
+            {   
+                if (((O)element1) clt ((O)element2))
+                {
+                    set working element1;
+                }
+                else
+                {
+                    set working element2;
+                }
+            }
+
+            elm result e esize working;
+        }
+        /*
+            ORR
+            ORN
+        */
+        else if (opcode == 3 && ((size >> 1) == 1) && U == 0)
+        {
+            if (size & 1)
+            {
+                element2 = ~element2;
+            }
+
+            elm result e esize (element1 | element2);
+        }
+        /*
+            AND
+            BIC
+        */
+        else if (opcode == 3 && ((size >> 1) == 0) && U == 0)
+        {
+            if (size & 1)
+            {
+                element2 = ~element2;
+            }
+
+            elm result e esize (element1 & element2);
+        }
+        /*
+            EOR
+        */
+        else if (opcode == 3 && size == 0 && U == 1)
+        {
+            elm result e esize (element1 ^ element2);
+        }
+        else
+        {
+            undefined_with(0);
+        }
+    }
+
+    V(Rd, result);
+}
+
+fl_instruction 32 floating_point_conditional_select(00011110 ftype_2 1 Rm_5 cond_4 11 Rn_5 Rd_5)
+{
+    int fltsize = get_flt_size(ftype);
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+
+    o_type O = switch fltsize { case 32 : o32, case 64 : o64 };
+
+    O result = 0;
+
+    if (condition_holds(cond))
+    {
+        set result operand1;
+    }
+    else
+    {
+        set result operand2;
+    }
+
+    V(Rd, result);
+}

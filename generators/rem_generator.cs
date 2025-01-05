@@ -124,7 +124,7 @@ namespace rem_frontend_generator.generators
             }
         }
 
-        string get_operation(string name, bool runtime, out bool is_signed)
+        string get_operation(string name, bool runtime, out bool is_signed, bool is_unary = false)
         {
             is_signed = false;
 
@@ -133,7 +133,11 @@ namespace rem_frontend_generator.generators
                 switch (name)
                 {
                     case "+": return "ir_add"; 
-                    case "-": return "ir_subtract";
+                    case "-": 
+                     if (is_unary)
+                        return "ir_negate";
+                    
+                    return "ir_subtract";
                     case "&": return "ir_bitwise_and";
                     case "|": return "ir_bitwise_or";
                     case "clt": return "ir_compare_less_signed";
@@ -155,6 +159,8 @@ namespace rem_frontend_generator.generators
                     case "!": return "ir_logical_not";
                     case "!=": return "ir_compare_not_equal";
                     case ">": return "ir_compare_greater_unsigned";
+                    case "cgt": return "ir_compare_greater_signed";
+                    case "cgte": return "ir_compare_greater_equal_signed";
                     default: throw new Exception();
                 }
             }
@@ -331,7 +337,7 @@ namespace rem_frontend_generator.generators
                     {
                         if (!uo.value.is_runtime()) result = convert_to_runtime(result, uo.get_type(), false);
 
-                        return $"ssa_emit_context::emit_ssa({get_default_argument(interpreted)}, {get_operation(uo.operation, true, out _)}, {result})";
+                        return $"ssa_emit_context::emit_ssa({get_default_argument(interpreted)}, {get_operation(uo.operation, true, out _, true)}, {result})";
                     }
                     else
                     {
@@ -800,6 +806,11 @@ struct interpreter_data
 struct uint128_t
 {
     uint64_t data[2];
+
+    uint128_t()
+    {
+
+    }
 
     operator uint64_t ()
     {

@@ -44,6 +44,10 @@ fl_instruction 32 mrs_register (110101010011 imm15_15 Rt_5)
     {
         operand = _sys(external thread_local_0);
     }
+    else if (imm15 == 24321)
+    {
+        operand = call_counter();
+    }
     else
     {
         undefined_with(imm15);
@@ -59,13 +63,12 @@ fl_instruction 32 hints(11010101000000110010 imm7_7 11111)
 
 }
 
-fl_instruction 32 dmb(11010101000000110011 CRm_4 10111111)
+fl_instruction 32 barriers(11010101000000110011 CRm_4 op2_3 Rt_5)
 {
-
-}
-
-fl_instruction 32 clrex(11010101000000110011 CRm_4 01011111)
-{
-    _sys(external exclusive_address, -1);
-    _sys(external exclusive_value, -1);
+    if (op2 == 2 && Rt == 31)
+    {
+        //clrex
+        _sys(external exclusive_address, -1);
+        _sys(external exclusive_value, -1);
+    }
 }
