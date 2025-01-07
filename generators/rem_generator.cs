@@ -830,28 +830,41 @@ struct uint128_t
     {
         switch (size)
         {
-            case 8:     ((uint8_t*)data)[index]     = value;    break;
-            case 16:    ((uint16_t*)data)[index]    = value;    break;
-            case 32:    ((uint32_t*)data)[index]    = value;    break;
-            case 64:    ((uint64_t*)data)[index]    = value;    break;
-            default: throw 0;
+            case 8: size = 1; break;
+            case 16: size = 2; break;
+            case 32: size = 4; break;
+            case 64: size = 8; break;
+
+            default: throw 0; break;
+        }
+
+        int byte_offset = index * size;
+
+        uint64_t* working_part = &data->d0;
+
+        if (byte_offset >= 8)
+        {
+            byte_offset -= 8;
+            working_part = &data->d1;
+        }
+
+        uint64_t mask = UINT64_MAX;
+
+        if (size == 8)
+        {
+            *working_part = value;
+        }
+        else
+        {
+            uint64_t mask           = ((1ULL << (size * 8)) - 1) << (byte_offset * 8);
+            uint64_t inverse_mask   = ~mask;
+
+            *working_part = (*working_part & inverse_mask) | ((value << (byte_offset * 8)) & mask);
         }
     }
 
     static uint64_t extract(uint128_t data, int index, int size)
     {
-        //For some reason this breaks on o3?
-        /*
-        switch (size)
-        {
-            case 8:     return ((uint8_t*)&data)[index];        break;
-            case 16:    return ((uint16_t*)&data)[index];       break;
-            case 32:    return ((uint32_t*)&data)[index];       break;
-            case 64:    return ((uint64_t*)&data)[index];       break;
-            default: throw 0;
-        }
-        */
-
         switch (size)
         {
             case 8: size = 1; break;

@@ -44,7 +44,7 @@ fl_instruction 32 compare_and_branch(sf_1 011010 op_1 imm19_19 Rt_5)
     int new_location = _get_pc() + (sign_extend(imm19, 19) << 2);
     int next_location = _get_pc() + 4;
 
-    o64 operand = X(Rt);
+    O operand = X(Rt);
     o8 branch_pass;
 
     if (!op)
