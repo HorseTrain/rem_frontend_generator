@@ -22,7 +22,7 @@ o64 call_counter() external
 void undefined_with(int value) external
 void undefined() external
 
-//soft float
+//soft binary
 o64 FPAdd(o64 operand1, o64 operand2, o64 FPCR, int N) external
 o64 FPSub(o64 operand1, o64 operand2, o64 FPCR, int N) external
 o64 FPMul(o64 operand1, o64 operand2, o64 FPCR, int N) external
@@ -31,11 +31,17 @@ o64 FPMax(o64 operand1, o64 operand2, o64 FPCR, int N) external
 o64 FPMin(o64 operand1, o64 operand2, o64 FPCR, int N) external
 o64 FPMaxNum(o64 operand1, o64 operand2, o64 FPCR, int N) external
 o64 FPMinNum(o64 operand1, o64 operand2, o64 FPCR, int N) external
+o64 FPCompare(o64 operand1, o64 operand2, o64 FPCR, int N) external
 
 //Unary
 o64 FPSqrt(o64 operand, o64 FPCR, int N) external
 o64 FPNeg(o64 operand, o64 FPCR, int N) external
 o64 FPAbs(o64 operand, o64 FPCR, int N) external
+
+//Conversion
+o64 FixedToFP(o64 source, int fracbits, int is_unsigned, int to, int from) external
+o64 FPToFixed(o64 source, int fracbits, int is_unsigned, int round, int to, int from) external
+o64 FPConvert(o64 source, int to, int from) external
 
 o64 _compare_and_swap(o64 physical_address, o64 expecting, o64 to_swap, int size) external
 

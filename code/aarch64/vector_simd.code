@@ -42,6 +42,40 @@ int get_flt_size(int ftype)
     }
 }
 
+int vfp_expand_imm(int imm8, int N)
+{
+    int E;
+
+    if (N == 16)
+    {
+        E = 5;
+    }
+    else if (N == 32)
+    {
+        E = 8;
+    }
+    else
+    {
+        E = 11;
+    }
+
+    int F = (N - E) - 1;
+    int sign = (imm8 >> 7) & 1;
+
+    int exp = ~(bit_c(imm8, 6)) & 1;
+    exp = (exp << (E - 3)) | replicate_c(bit_c(imm8, 6), 1, E - 3);
+    exp = (exp << 2) | bits_c(imm8, 5, 4);
+
+    int frac = bits_c(imm8, 3, 0) << (F - 4);
+
+    int result = sign;
+
+    result = (result << (1 + (E - 3) + 2)) | exp;
+    result = (result << (4 + (F - 4))) | frac;
+
+    return result;
+}
+
 int expand_imm(int op, int cmode, int imm8)
 {
     int imm64 = 0;
@@ -195,6 +229,10 @@ fl_instruction 32 dup_element_vector (0 Q_1 001110000 imm5_5 000001 Rn_5 Rd_5)
     dup_element(index, esize, elements, Rn, Rd);
 }
 
+/*
+    SMOV
+    UMOV
+*/
 fl_instruction 32 move_to_gp (0 Q_1 001110000 imm5_5 001 U_1 11 Rn_5 Rd_5)
 {
     int size = lowest_bit_set_c(bits_c(imm5, 3, 0));
@@ -375,7 +413,7 @@ fl_instruction 32 fmov_general(sf_1 0011110 ftype_2 10 rmode_1 11 opcode_1 00000
     } 
 }
 
-fl_instruction 32 convert_to_float(sf_1 0011110 ftype_2 10001 U_1 000000 Rn_5 Rd_5)
+void convert_to_float(int sf, int ftype,int U, int Rn, int Rd, int from_vector)
 {
     int intsize = 32 << sf;
     int fltsize = get_flt_size(ftype);
@@ -384,7 +422,16 @@ fl_instruction 32 convert_to_float(sf_1 0011110 ftype_2 10001 U_1 000000 Rn_5 Rd
     o_type F = switch fltsize { case 16 : o16, case 32 : o32, case 64 : o64 };
 
     F result;
-    I operand = X(Rn);
+    I operand;
+
+    if (from_vector)
+    {
+        operand = V(Rn);
+    }
+    else
+    {
+        operand = X(Rn);
+    }
 
     if (U)
     {
@@ -398,6 +445,16 @@ fl_instruction 32 convert_to_float(sf_1 0011110 ftype_2 10001 U_1 000000 Rn_5 Rd
     V(Rd, result);
 }
 
+fl_instruction 32 convert_to_float_gp       (sf_1 0011110 ftype_2 10001 U_1 000000 Rn_5 Rd_5)
+{
+    convert_to_float(sf, ftype, U, Rn, Rd, false);
+}
+
+fl_instruction 32 convert_to_float_vector   (01 U_1 111100 sz_1 100001110110 Rn_5 Rd_5)
+{
+    convert_to_float(sz, sz, U, Rn, Rd, true);
+}
+
 fl_instruction 32 floating_point_scalar(00011110 ftype_2 1 Rm_5 opcode_4 10 Rn_5 Rd_5)
 {
     int fltsize = get_flt_size(ftype);
@@ -406,7 +463,7 @@ fl_instruction 32 floating_point_scalar(00011110 ftype_2 1 Rm_5 opcode_4 10 Rn_5
     o64 operand2 = V(Rm);
     o64 result;
 
-    o64 fpcr_state = _sys(external fpcr);
+    o64 fpcr_state = 0;
 
     if (opcode == 0)
     {
@@ -507,6 +564,38 @@ O vector_shift<O>(O element, O shift, int bit_count, int is_unsigned)
     }
 
     return result;
+}
+
+fl_instruction 32 conversion_between_floating_point_and_fixed_point(sf_1 0 S_1 11110 ftype_2 0 rmode_2 opcode_3 scale_6 Rn_5 Rd_5)
+{
+    int intsize = 32 << sf;
+    int fltsize = get_flt_size(ftype);
+    int fracbits = 64 - scale;
+
+    o64 result;
+
+    //int -> float
+    if (rmode == 0)
+    {
+        o64 source = X(Rn);
+
+        result = FixedToFP(source, fracbits, opcode == 3, fltsize, intsize);
+
+        V(Rd, result);
+    }
+    //float -> int
+    else if (rmode == 3)
+    {
+        o64 source = V(Rn);
+
+        result = FPToFixed(source, fracbits, opcode == 1, external FPRounding_ZERO, intsize, fltsize);
+
+        X(Rd, result);
+    }
+    else
+    {
+        undefined_with(0);
+    }
 }
 
 fl_instruction 32 advanced_simd_three_same(0 Q_1 U_1 01110 size_2 1 Rm_5 opcode_5 1 Rn_5 Rd_5)
@@ -748,4 +837,232 @@ fl_instruction 32 floating_point_conditional_select(00011110 ftype_2 1 Rm_5 cond
     }
 
     V(Rd, result);
+}
+
+fl_instruction 32 fmov_scalar_immediate(00011110 ftype_2 1 imm8_8 10000000 Rd_5)
+{
+    int fltsize = get_flt_size(ftype);
+
+    o64 imm = vfp_expand_imm(imm8, fltsize);
+
+    V(Rd, imm);
+}
+
+fl_instruction 32 fcvt(00011110 ftype_2 10001 opc_2 10000 Rn_5 Rd_5)
+{
+    int srcsize = get_flt_size(ftype);
+    int dstsize = get_flt_size(opc);
+
+    o64 operand = V(Rn);
+    
+    V(Rd,FPConvert(operand, dstsize, srcsize));
+}
+
+fl_instruction 32 floating_point_data_processing_one_source(M_1 0 S_1 11110 ftype_2 1 opcode_6 10000 Rn_5 Rd_5)
+{
+    int fltsize = get_flt_size(ftype);
+
+    o64 operand = V(Rn);
+    o64 result = 0;
+
+    o64 fpcr_in = 0;
+
+    if (opcode == 1)
+    {
+        result = FPAbs(operand, fpcr_in, fltsize);
+    }
+    else if (opcode == 2)
+    {
+        result = FPNeg(operand, fpcr_in, fltsize);
+    }
+    else if (opcode == 3)
+    {
+        result = FPSqrt(operand, fpcr_in, fltsize);
+    }
+    else
+    {
+        undefined_with(0);
+    }
+
+    o128 vector = vector_zero;
+
+    elm vector 0 fltsize result;
+
+    V(Rd, vector);
+}
+
+fl_instruction 32 fcmp(00011110 ftype_2 1 Rm_5 001000 Rn_5 0 opc_1 000)
+{
+    int datasize = get_flt_size(ftype);
+    int cmp_with_zero = opc == 1;
+
+    o64 operand1 = V(Rn);
+    o64 operand2;
+
+    if (cmp_with_zero)
+    {
+        operand2 = 0;
+    }
+    else
+    {
+        operand2 = V(Rm);
+    }
+
+    o64 nzcv = FPCompare(operand1, operand2, _sys(external fpcr), datasize);
+
+    _sys(external nzcv_n, (nzcv >> 3) & 1);
+    _sys(external nzcv_z, (nzcv >> 2) & 1);
+    _sys(external nzcv_c, (nzcv >> 1) & 1);
+    _sys(external nzcv_v, (nzcv >> 0) & 1);
+}
+
+fl_instruction 32 fccmp(00011110 ftype_2 1 Rm_5 cond_4 01 Rn_5 0 nzcv_4)
+{
+    int datasize = get_flt_size(ftype);
+
+    o64 operand1 = V(Rn);
+    o64 operand2 = V(Rm);
+
+    if (condition_holds(cond))
+    {
+        o64 success_nzcv = FPCompare(operand1, operand2, _sys(external fpcr), datasize);
+
+        _sys(external nzcv_n, (success_nzcv >> 3) & 1);
+        _sys(external nzcv_z, (success_nzcv >> 2) & 1);
+        _sys(external nzcv_c, (success_nzcv >> 1) & 1);
+        _sys(external nzcv_v, (success_nzcv >> 0) & 1);
+    }
+    else
+    {
+        _sys(external nzcv_n, (nzcv >> 3) & 1);
+        _sys(external nzcv_z, (nzcv >> 2) & 1);
+        _sys(external nzcv_c, (nzcv >> 1) & 1);
+        _sys(external nzcv_v, (nzcv >> 0) & 1);
+    }
+}
+
+void convert_to_int(int sf, int ftype, int Rd, int Rn, int round, int is_unsigned, int to_vector)
+{
+    o64 operand = V(Rn);
+
+    int intsize = 32 << sf;
+    int fltsize = get_flt_size(ftype);
+
+    o64 result = FPToFixed(operand, 0, is_unsigned, round, intsize, fltsize);
+
+    if (to_vector)
+    {
+        V(Rd, result);
+    }
+    else
+    {
+        X(Rd, result);
+    }
+}
+
+fl_instruction 32 fcvtz_scalar_integer(sf_1 0011110 ftype_2 11100 U_1 000000 Rn_5 Rd_5)
+{
+    convert_to_int(sf, ftype, Rd, Rn, external FPRounding_ZERO, U, 0);
+}
+
+fl_instruction 32 fcvtn_scalar_integer(sf_1 0011110 ftype_2 10000 U_1 000000 Rn_5 Rd_5)
+{
+    convert_to_int(sf, ftype, Rd, Rn, external FPRounding_TIEEVEN, U, 0);
+}
+
+fl_instruction 32 fcvta_scalar_integer(sf_1 0011110 ftype_2 10010 U_1 000000 Rn_5 Rd_5)
+{
+    convert_to_int(sf, ftype, Rd, Rn, external FPRounding_TIEAWAY, U, 0);
+}
+
+fl_instruction 32 fcvtm_scalar_integer(sf_1 0011110 ftype_2 11000 U_1 000000 Rn_5 Rd_5)
+{
+    convert_to_int(sf, ftype, Rd, Rn, external FPRounding_NEGINF, U, 0);
+}
+
+fl_instruction 32 fcvtp_scalar_integer(sf_1 0011110 ftype_2 10100 U_1 000000 Rn_5 Rd_5)
+{
+    convert_to_int(sf, ftype, Rd, Rn, external FPRounding_POSINF, U, 0);
+}
+
+fl_instruction 32 advanced_simd_across_lanes(0 Q_1 U_1 	01110 size_2 11000 opcode_5 10 Rn_5 Rd_5)
+{
+    o128 source = V(Rn);
+
+    //UADDLV
+    if (opcode == 3)
+    {
+        int esize = 8 << size;
+        int datasize = 64 << Q;
+        int elements = datasize / esize;
+
+        int is_unsigned = U;
+
+        o128 operand = V(Rn);
+        
+        o64 sum = 0;
+
+        loop (elements) e
+        {
+            o64 working = (elm operand e esize);
+
+            if (!is_unsigned)
+            {
+                o_type O = switch esize { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64 };
+
+                working = extend o64 (O)working;
+            }
+
+            sum = sum + working;
+        }
+
+        o128 final = vector_zero;
+
+        elm final 0 (2 * esize) sum;
+
+        V(Rd, final);
+    }
+    else
+    {
+        undefined_with(0);
+    }
+}
+
+fl_instruction 32 advanced_simd_two_register_misc(0 Q_1 U_1 01110 size_2 10000 opcode_5 10 Rn_5 Rd_5)
+{
+    o128 source = V(Rn);
+
+    //CNT
+    if (opcode == 5 && U == 0)
+    {
+        int esize = 8;
+        int datasize = 64 << Q;
+        int elements = datasize / 8;
+
+        o128 result = vector_zero;
+
+        loop (elements) e
+        {
+            o8 working = elm source e esize;
+            o8 count = 0;
+
+            loop (esize) b
+            {
+                o8 bit = (working >> b) & 1;
+
+                if (bit)
+                {
+                    set count (count + 1);
+                }
+            }
+
+            elm result e esize count;
+        } 
+
+        V(Rd, result);
+    }
+    else
+    {
+        undefined_with(0);
+    }
 }

@@ -651,7 +651,7 @@ namespace rem_frontend_generator.generators
                 {
                     if (interpreted)
                     {
-                        return $"uint128_t::insert({generate_object(ei.source, interpreted)}, {generate_object(ei.index, interpreted)}, {generate_object(ei.size, interpreted)}, {generate_object(ei.value, interpreted)});";
+                        return $"uint128_t::insert(&{generate_object(ei.source, interpreted)}, {generate_object(ei.index, interpreted)}, {generate_object(ei.size, interpreted)}, {generate_object(ei.value, interpreted)});";
                     }
                     else
                     {
@@ -793,6 +793,7 @@ namespace rem_frontend_generator.generators
 #include ""emulator/ssa_emit_context.h""
 #include ""aarch64_context_offsets.h""
 #include ""emulator/guest_process.h""
+#include ""aarch64_soft_float.h""
 
 struct interpreter_data
 {
@@ -805,51 +806,85 @@ struct interpreter_data
 
 struct uint128_t
 {
-    uint64_t data[2];
+    uint64_t d0;
+    uint64_t d1;
 
     uint128_t()
     {
-
+        d0 = 0;
+        d1 = 0;
     }
 
     operator uint64_t ()
     {
-        return data[0];
+        return d0;
     }
 
     uint128_t (uint64_t source)
     {
-        data[0] = source;
-        data[1] = 0;
+        d0 = source;
+        d1 = 0;
     }
     
-    static void insert(uint128_t& data, int index, int size, uint64_t value)
+    static void insert(uint128_t* data, int index, int size, uint64_t value)
     {
         switch (size)
         {
-            case 8:     *((uint8_t*)&data + index) = value;     break;
-            case 16:    *((uint16_t*)&data + index) = value;    break;
-            case 32:    *((uint32_t*)&data + index) = value;    break;
-            case 64:    *((uint64_t*)&data + index) = value;    break;
+            case 8:     ((uint8_t*)data)[index]     = value;    break;
+            case 16:    ((uint16_t*)data)[index]    = value;    break;
+            case 32:    ((uint32_t*)data)[index]    = value;    break;
+            case 64:    ((uint64_t*)data)[index]    = value;    break;
             default: throw 0;
         }
     }
 
-    static uint64_t extract(uint128_t& data, int index, int size)
+    static uint64_t extract(uint128_t data, int index, int size)
     {
+        //For some reason this breaks on o3?
+        /*
         switch (size)
         {
-            case 8:     return *((uint8_t*)&data + index);     break;
-            case 16:    return *((uint16_t*)&data + index);    break;
-            case 32:    return *((uint32_t*)&data + index);    break;
-            case 64:    return *((uint64_t*)&data + index);    break;
+            case 8:     return ((uint8_t*)&data)[index];        break;
+            case 16:    return ((uint16_t*)&data)[index];       break;
+            case 32:    return ((uint32_t*)&data)[index];       break;
+            case 64:    return ((uint64_t*)&data)[index];       break;
             default: throw 0;
         }
+        */
+
+        switch (size)
+        {
+            case 8: size = 1; break;
+            case 16: size = 2; break;
+            case 32: size = 4; break;
+            case 64: size = 8; break;
+
+            default: throw 0; break;
+        }
+
+        int byte_offset = index * size;
+
+        uint64_t working_part = data.d0;
+
+        if (byte_offset >= 8)
+        {
+            byte_offset -= 8;
+            working_part = data.d1;
+        }
+
+        uint64_t mask = UINT64_MAX;
+
+        if (size != 8)
+        {
+            mask = (1ULL << (8 * size)) - 1;
+        }
+        
+        return (working_part >> (byte_offset * 8)) & mask;
     }
 
     bool operator == (uint128_t other)
     {
-        return (data[0] == other.data[0]) && (data[1] == other.data[1]);
+        return (d0 == other.d0) && (d1 == other.d1);
     }
 };
 
@@ -976,7 +1011,7 @@ static ir_operand copy_new_raw_size(ssa_emit_context* ctx, ir_operand source, ui
 	{	
 		ir_operand result = ssa_emit_context::emit_ssa(ctx, ir_vector_zero, int128);
 
-		ir_operation_block::emitds(ctx->ir, ir_vector_insert, result, result, source, ir_operand::create_con(0), ir_operand::create_con(64));
+		ir_operation_block::emitds(ctx->ir, ir_vector_insert, result, result, source, ir_operand::create_con(0), ir_operand::create_con(8 << ir_operand::get_raw_size(&source)));
 
 		return result;
 	}
@@ -984,7 +1019,7 @@ static ir_operand copy_new_raw_size(ssa_emit_context* ctx, ir_operand source, ui
 	{
 		ir_operand result = ssa_emit_context::create_local(ctx, new_size);
 		
-		ir_operation_block::emitds(ctx->ir, ir_vector_extract, result, source, ir_operand::create_con(0), ir_operand::create_con(64));
+		ir_operation_block::emitds(ctx->ir, ir_vector_extract, result, source, ir_operand::create_con(0), ir_operand::create_con(8 << new_size));
 
 		return result;
 	}

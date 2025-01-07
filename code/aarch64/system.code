@@ -48,6 +48,11 @@ fl_instruction 32 mrs_register (110101010011 imm15_15 Rt_5)
     {
         operand = call_counter();
     }
+    else if (imm15 == 22529)
+    {
+        //ctr_el0
+        operand = 2219098116;
+    }
     else
     {
         undefined_with(imm15);
@@ -61,6 +66,11 @@ fl_instruction 32 mrs_register (110101010011 imm15_15 Rt_5)
 fl_instruction 32 hints(11010101000000110010 imm7_7 11111)
 {
 
+}
+
+fl_instruction 32 sys(1101010100 L_1 01 imm19_19)
+{
+    
 }
 
 fl_instruction 32 barriers(11010101000000110011 CRm_4 op2_3 Rt_5)
