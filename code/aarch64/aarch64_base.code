@@ -1,0 +1,1453 @@
+//GENERAL PURPOSE
+
+/*
+    ADD     d, n, imm
+    SUB     d, n, imm
+    ADDS    d, n, imm
+    SUBS    d, n, imm
+*/
+fl_instruction 32 add_subtract_imm12(sf_1 op_1 S_1 100010 sh_1 imm12_12 Rn_5 Rd_5)
+{
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    O operand1 = XSP(Rn);
+    O operand2 = decode_add_subtract_imm_12(imm12, sh);
+
+    O d = add_subtract_impl<O>(operand1, operand2, S, op == 0);
+
+    if (S)
+    {
+        X(Rd, d);
+    }
+    else
+    {
+        XSP(Rd, d);
+    }
+}
+
+/*
+    ADD     d, n, m, shifted
+    SUB     d, n, m, shifted
+    ADDS    d, n, m, shifted
+    SUBS    d, n, m, shifted
+*/
+fl_instruction 32 add_subtract_shifted(sf_1 op_1 S_1 01011 shift_2 0 Rm_5 imm6_6 Rn_5 Rd_5)
+{
+    int shift_ammount = imm6;
+
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    O operand1 = X(Rn);
+    O operand2 = a_shift_reg<O>(Rm, shift, shift_ammount);
+
+    O result = add_subtract_impl<O>(operand1, operand2, S, op == 0);
+
+    X(Rd, result);
+}
+
+/*
+    ADD     d, n, m, extended 
+    SUB     d, n, m, extended
+    ADDS    d, n, m, extended
+    SUBS    d, n, m, extended
+*/
+fl_instruction 32 add_subtract_extended(sf_1 op_1 S_1 01011001 Rm_5 option_3 imm3_3 Rn_5 Rd_5)
+{
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    int shift = imm3;
+    int extend_type = option;
+
+    O operand1 = XSP(Rn);
+    O operand2 = a_extend_reg<O>(Rm, extend_type, shift);
+
+    O result = add_subtract_impl<O>(operand1, operand2, S, op == 0);
+
+    if (S)
+    {
+        X(Rd, result);
+    }
+    else
+    {
+        XSP(Rd, result);
+    }
+}
+
+/*
+    ADC d, n, m
+    SBC d, n, m
+    ADCS d, n, m
+    SBCS d, n, m
+*/
+fl_instruction 32 add_subtract_carry(sf_1 op_1 S_1 11010000 Rm_5 000000 Rn_5 Rd_5)
+{
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    O operand1 = X(Rn);
+    O operand2 = X(Rm);
+
+    O result = add_subtract_carry_impl<O>(operand1, operand2, S == 1, op == 0, (O)_sys(external nzcv_c));
+
+    X(Rd, result);
+}
+
+/*
+    LSLV d, n, m
+    LSRV d, n, m
+    ASRV d, n, m
+    RORV d, n, m
+*/
+fl_instruction 32 shift_variable(sf_1 0011010110  Rm_5 0010 op2_2 Rn_5 Rd_5)
+{
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    O operand1 = X(Rn);
+    O operand2 = X(Rm);
+
+    int mask = (32 << sf) - 1;
+
+    O result;
+
+    operand2 = operand2 & mask;
+
+    if (op2 == 0)
+    {
+        result = operand1 << operand2;
+    }
+    else if (op2 == 1)
+    {
+        result = operand1 >> operand2;
+    }
+    else if (op2 == 2)
+    {
+        result = operand1 sar operand2;
+    }
+    else
+    {
+        result = operand1 ror operand2;
+    }
+
+    X(Rd, result);
+}
+
+/*
+    SMADDL d, n, m, a
+    SMSUBL d, n, m, a
+    UMADDL d, n, m, a
+    UMSUBL d, n, m, a
+*/
+fl_instruction 32 multiply_with_32(10011011 U_1 01 Rm_5 o0_1 Ra_5 Rn_5 Rd_5)
+{
+    o64 operand1 = X(Rn);
+    o64 operand2 = X(Rm);
+    o64 operand3 = X(Ra); 
+
+    int is_add = o0 == 0;
+    int is_signed = U == 0;
+
+    if (is_signed)
+    {
+        operand1 = extend o64 (o32)operand1;
+        operand2 = extend o64 (o32)operand2;
+    }
+    else
+    {
+        operand1 = operand1 & UINT32_MAX;
+        operand2 = operand2 & UINT32_MAX;
+    }
+
+    o64 result;
+
+    if (is_add)
+    {
+        result = operand3 + (operand1 * operand2);
+    }
+    else
+    {
+        result = operand3 - (operand1 * operand2);
+    }
+
+    X(Rd, result);
+}
+
+/*
+    UMULH d, n, m
+    SMULH d, n, m
+*/
+fl_instruction 32 multiply_hi(10011011 U_1 10 Rm_5 o0_1 11111 Rn_5 Rd_5)
+{
+    o64 operand1 = X(Rn);
+    o64 operand2 = X(Rm);
+
+    int is_signed = U == 0;
+
+    o64 result;
+
+    if (is_signed)
+    {
+        result = operand1 smulh operand2;
+    }   
+    else
+    {
+        result = operand1 umulh operand2;
+    }
+
+    X(Rd, result);
+}
+
+/*
+    MADD d, n, m, a
+    MSUB d, n, m, a
+*/
+fl_instruction 32 multiply_additive(sf_1 0011011000 Rm_5 o0_1 Ra_5 Rn_5 Rd_5)
+{
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    O operand1 = X(Rn);
+    O operand2 = X(Rm);
+    O operand3 = X(Ra);
+
+    int is_add = o0 == 0;
+
+    O result;
+
+    if (is_add)
+    {
+        result = operand3 + (operand1 * operand2);
+    }
+    else
+    {
+        result = operand3 - (operand1 * operand2);
+    }
+
+    X(Rd, result);
+}
+
+/*
+    UDIV d, n, m
+    SDIV d, n, m
+*/
+fl_instruction 32 divide(sf_1 0011010110 Rm_5 00001 o1_1 Rn_5 Rd_5)
+{
+    int is_signed = o1 == 1;
+
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    O operand1 = X(Rn);
+    O operand2 = X(Rm);
+
+    O result;
+
+    if (operand2 == 0)
+    {
+        X(Rd, 0);
+    }
+    else
+    {
+        if (is_signed)
+        {
+            int min = INT64_MIN;
+
+            if (!sf)
+            {
+                min = min >> 32;
+            }
+
+            if (operand1 == min && operand2 == -1)
+            {
+                X(Rd, min);
+            }
+            else
+            {
+                X(Rd,operand1 sdiv operand2);
+            }
+        }
+        else
+        {
+            X(Rd,operand1 / operand2);
+        }
+    }
+}
+
+/*
+    RBIT d, n, m
+*/
+fl_instruction 32 rbit(sf_1 101101011000000000000 Rn_5 Rd_5)
+{
+    int datasize = 32 << sf;
+
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    O operand = X(Rn);
+    O result = 0;
+
+    loop (datasize) i
+    {
+        O working = (operand >> i) & 1;
+
+        result = result | (working << (datasize - i - 1));
+    }
+
+    X(Rd, result);
+}
+
+/*
+    REV16 d, n, m
+*/
+fl_instruction 32 rev16(sf_1 101101011000000000001 Rn_5 Rd_5)
+{   
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    int count = 2 << sf;
+
+    O working = X(Rn);
+    O result = 0;
+
+    loop (count) i
+    {
+        O part = (working >> (i * 16)) & UINT16_MAX;
+
+        part = reverse_bytes<O>(part, 2);
+
+        result = result | (part << (i * 16));
+    }   
+
+    X(Rd, result);
+}
+
+/*
+    REV     d, n, m
+    REV32   d, n, m
+*/  
+fl_instruction 32 reverse(sf_1 10110101100000000001 opc_1 Rn_5 Rd_5)
+{
+    int datasize = 32 << sf;
+
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    O working = X(Rn);
+    O result;
+
+    if (sf == opc)
+    {
+        result = reverse_bytes<O>(working, 4 << sf);
+    }
+    else
+    {
+        result = reverse_bytes<O>(working, 4) | (reverse_bytes<O>(working >> 32, 4) << 32);
+    }
+
+    X(Rd, result);
+}
+
+/*
+    CLZ d, n
+    CLS d, n
+*/
+fl_instruction 32 count_leading(sf_1 10110101100000000010 s_1 Rn_5 Rd_5)
+{
+    int datasize = 32 << sf;
+
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+
+  /*THIS IS VERY VERY BAD CODE!!!
+    Eventually i want to add breaking
+    to both jit and interpreter. For now,
+    this should be fine.*/
+
+    O operand = X(Rn);
+    O result = 0;
+    O done = false;
+    O sig_bit;
+
+    if (s)
+    {
+        sig_bit = (operand >> (datasize - 1)) & 1;
+        datasize = datasize - 1;
+    }
+
+    loop (datasize) i
+    {
+        O working = (operand >> (datasize - i - 1)) & 1;
+
+        if (s)
+        {
+            if (working != sig_bit)
+            {
+                set done 1;
+            }
+        }
+        else if (working)
+        {
+            set done 1;
+        }
+
+        if (!done)
+        {
+            set result result + 1;
+        }
+    }
+
+    X(Rd, result);
+}
+
+/*
+    EXTR d, n, m, imm
+*/
+fl_instruction 32 extr(sf_1 00100111 N_1 0 Rm_5 imms_6 Rn_5 Rd_5)
+{
+    int datasize = 32 << sf;
+
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    O operand1 = X(Rn);
+    O operand2 = X(Rm);
+    int lsb = imms;
+
+    O result;
+
+    if (lsb == 0)
+    {
+        result = operand2;
+    }
+    else if (Rn == Rm)
+    {
+        result = operand1 ror lsb;
+    }
+    else
+    {
+        result = (operand2 >> lsb) | (operand1 << (datasize - lsb));
+    }
+
+    X(Rd, result);
+}
+
+/*
+    SBFM d, n, imm, imm
+    BFM d, n, imm, imm
+    UBFM d, n, imm, imm
+*/
+fl_instruction 32 bitfield(sf_1 opc_2 100110 N_1 immr_6 imms_6 Rn_5 Rd_5)
+{
+    int datasize = 32 << sf;
+
+    int tmask = decode_bitmask_tmask(N, imms, immr, false, datasize, true);
+    int wmask = decode_bitmask_tmask(N, imms, immr, false, datasize, false);
+
+    int inzero;
+    int _extend;
+
+    if (opc == 0)
+    {
+        inzero = true;
+        _extend = true;
+    }
+    else if (opc == 1)
+    {
+        inzero = false;
+        _extend = false;
+    }
+    else if (opc == 2)
+    {
+        inzero = true;
+        _extend = false;
+    }
+    else
+    {
+        undefined();
+    }
+
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    O dst;
+    O src = X(Rn);
+
+    if (inzero)
+    {
+        dst = 0;
+    }
+    else
+    {
+        dst = X(Rd);
+    }
+    
+    O bot = (dst & ~wmask) | ((src ror immr) & wmask);
+
+    O top;
+
+    if (_extend)
+    {
+        top = 0 - ((src >> imms) & 1);
+    }
+    else
+    {
+        top = dst;
+    }
+
+    X(Rd, (top & ~tmask) | (bot & tmask));
+}
+
+/*
+    AND d, n, imm
+    ORR d, n, imm
+    EOR d, n, imm
+*/
+fl_instruction 32 logical_immediate(sf_1 opc_2 100100 N_1 immr_6 imms_6 Rn_5 Rd_5)
+{
+    int datasize = 32 << sf;
+
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    O operand1 = X(Rn);
+    O operand2 = decode_bitmask_tmask(N, imms, immr, true, datasize, false);
+
+    O result;
+
+    if (opc == 0)
+    {
+        result = operand1 & operand2;
+    }
+    else if (opc == 1)
+    {
+        result = operand1 | operand2;
+    }
+    else if (opc == 2)
+    {
+        result = operand1 ^ operand2;
+    }
+    else if (opc == 3)
+    {
+        result = operand1 & operand2;
+
+        X(Rd, result);
+
+        _sys(external nzcv_n, result clt 0);
+        _sys(external nzcv_z, result == 0);
+        _sys(external nzcv_c, 0);
+        _sys(external nzcv_v, 0);
+
+        return;
+    }
+
+    XSP(Rd, result);
+}
+
+/*
+    AND d, n, m, shifted
+    EOR d, n, m, shifted
+    ORR d, n, m, shifted
+    BIC d, n, m, shifted
+    EON d, n, m, shifted
+    ORN d, n, m, shifted
+*/
+fl_instruction 32 logical_shifted (sf_1 opc_2 01010 shift_2 N_1 Rm_5 imm6_6 Rn_5 Rd_5)
+{
+    int shift_type = shift;
+    int shift_ammount = imm6;
+
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    O operand1 = X(Rn);
+    O operand2 = a_shift_reg<O>(Rm, shift_type, shift_ammount);
+
+    if (N)
+    {
+        operand2 = ~operand2;
+    }
+
+    O result;
+
+    if (opc == 0 || opc == 3)
+    {
+        result = operand1 & operand2;
+
+        if (opc == 3)
+        {
+            _sys(external nzcv_n, result clt 0);
+            _sys(external nzcv_z, result == 0);
+            _sys(external nzcv_c, 0);
+            _sys(external nzcv_v, 0);
+        }
+    }
+    else if (opc == 1)
+    {
+        result = operand1 | operand2;
+    }
+    else if (opc == 2)
+    {
+        result = operand1 ^ operand2;
+    }
+
+    X(Rd, result);
+}
+
+/*
+    CSEL    d, n, m, cond
+    CSNEG   d, n, m, cond
+    CSINC   d, n, m, cond
+    CSINV   d, n, m, cond
+*/
+fl_instruction 32 conditional_select(sf_1 op_1 S_1 11010100 Rm_5 cond_4 0 op2_1 Rn_5 Rd_5)
+{
+    int incrament = op2;
+    int invert = op;
+
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    O operand1 = X(Rn);
+    O operand2 = X(Rm);
+
+    O condition_pass = condition_holds(cond);
+
+    if (condition_pass)
+    {
+        X(Rd, operand1);
+    }
+    else
+    {
+        if (invert)
+        {
+            operand2 = ~operand2;
+        }
+
+        if (incrament)
+        {
+            operand2 = operand2 + 1;
+        }
+        
+        X(Rd, operand2);
+    }
+}
+
+/*
+    CCMP n, m, cond, nzcv
+    CCMN n, m, cond, nzcv
+    CCMP n, imm, cond, nzcv
+    CCMN n, imm, cond, nzcv
+*/
+fl_instruction 32 conditional_compare(sf_1 op_1 111010010 Rm_5 cond_4 mode_1 0 Rn_5 0 nzcv_4)
+{
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    if (condition_holds(cond))
+    {
+        O operand1 = X(Rn);
+        O operand2;
+
+        if (mode)
+        {
+            operand2 = Rm;
+        }
+        else
+        {
+            operand2 = X(Rm);
+        }
+
+        add_subtract_impl<O>(operand1, operand2, true, op == 0);
+    }
+    else
+    {
+        _sys(external nzcv_n, (nzcv >> 3) & 1);
+        _sys(external nzcv_z, (nzcv >> 2) & 1);
+        _sys(external nzcv_c, (nzcv >> 1) & 1);
+        _sys(external nzcv_v, (nzcv >> 0) & 1);
+    }
+}
+
+/*
+    MOVZ d, imm, shift
+    MOVK d, imm, shift
+    MOVN d, imm, shift
+*/
+fl_instruction 32 move_wide_immediate (sf_1 opc_2 100101 hw_2 imm16_16 Rd_5)
+{
+    int shift = hw * 16;
+    int immediate = imm16 << shift;
+
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+    
+    O result;
+
+    if (opc == 0)
+    {
+        result = ~immediate;
+    }
+    else if (opc == 3)
+    {
+        result = X(Rd);
+
+        result = result & ~(UINT16_MAX << shift);
+        result = result | immediate;
+    }
+    else
+    {
+        result = immediate;
+    }
+
+    X(Rd, result);
+}
+
+/*
+    ADR     d, imm
+    ADRP    d, imm
+*/
+fl_instruction 32 pc_rel_addressing (op_1 immlo_2 10000 immhi_19 Rd_5)
+{
+    int offset = sign_extend((immhi << 2) | immlo, 21);
+    int instruction_pc = _get_pc();
+
+    if (op)
+    {
+        offset = offset << 12;
+
+        instruction_pc = instruction_pc & ~4095;
+    }
+
+    X(Rd, instruction_pc + offset);
+}
+
+//BRANCHING
+
+/*
+    BR n
+    BLR n
+*/
+fl_instruction 32 branch_register (1101011000 l_1 11111000000 Rn_5 00000)
+{
+    branch_long_universal(Rn, l);
+}
+
+/*
+    RET
+*/
+fl_instruction 32 return_register (1101011001011111000000 Rn_5 00000)
+{
+    branch_long_universal(Rn, false);
+}
+
+/*
+    TBZ t, imm, label
+    TBNZ t, imm, label
+*/
+fl_instruction 32 test_bit_branch(b5_1 011011 op_1 b40_5 imm14_14 Rt_5)
+{
+    int bit_pos = b40 + (b5 << 5);
+
+    int new_location = _get_pc() + (sign_extend(imm14, 14) << 2);
+    int next_location = _get_pc() + 4;
+
+    o64 src = X(Rt);
+    
+    o8 branch_pass = ((src >> bit_pos) & 1) == op;
+
+    _branch_conditional(new_location, next_location, branch_pass);    
+}
+
+/*
+    CBZ t, label
+    CBNZ t, label
+*/
+fl_instruction 32 compare_and_branch(sf_1 011010 op_1 imm19_19 Rt_5)
+{
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    int new_location = _get_pc() + (sign_extend(imm19, 19) << 2);
+    int next_location = _get_pc() + 4;
+
+    O operand = X(Rt);
+    o8 branch_pass;
+
+    if (!op)
+    {  
+        branch_pass = operand == 0; 
+    }
+    else
+    {
+        branch_pass = operand != 0;
+    }
+
+    _branch_conditional(new_location, next_location, branch_pass);    
+}
+
+/*
+    B label
+    BL label
+*/
+fl_instruction 32 b_unconditional(op_1 00101 imm26_26)
+{
+    int new_location = _get_pc() + (sign_extend(imm26, 26) << 2);
+
+    if (op)
+    {
+        int next_location = _get_pc() + 4;
+        X(30, next_location);
+    }
+    
+    _branch_short(new_location);
+}
+
+/*
+    B.cond label
+*/
+fl_instruction 32 b_conditional(01010100 imm19_19 0 cond_4)
+{
+    int new_location = _get_pc() + (sign_extend(imm19, 19) << 2);
+    int next_location = _get_pc() + 4;
+
+    _branch_conditional(new_location, next_location, condition_holds(cond));
+}
+
+//BRANCHING AND SYSTEM
+/*
+    SVC imm
+*/
+fl_instruction 32 svc(11010100000 imm16_16 00001)
+{
+    call_supervisor(imm16);
+}
+
+fl_instruction 32 msr_register (110101010001 imm15_15 Rt_5)
+{
+    o64 operand = X(Rt);
+
+    if (imm15 == 23072)
+    {
+        _sys(external fpcr, operand);
+    }
+    else if (imm15 == 23073)
+    {
+        _sys(external fpsr, operand);
+    }
+    else if (imm15 == 24194)
+    {
+        _sys(external thread_local_1, operand);
+    }
+    else if (imm15 == 24195)
+    {
+        _sys(external thread_local_0, operand);
+    }
+    else
+    {
+        undefined_with(imm15);
+    }
+}
+
+fl_instruction 32 mrs_register (110101010011 imm15_15 Rt_5)
+{
+    o64 operand;
+
+    if (imm15 == 23072)
+    {
+        operand = _sys(external fpcr);
+    }
+    else if (imm15 == 23073)
+    {
+        operand = _sys(external fpsr);
+    }
+    else if (imm15 == 24194)
+    {
+        operand = _sys(external thread_local_1);
+    }
+    else if (imm15 == 24195)
+    {
+        operand = _sys(external thread_local_0);
+    }
+    else if (imm15 == 24321)
+    {
+        operand = call_counter();
+    }
+    else if (imm15 == 22529)
+    {
+        //ctr_el0
+        operand = 2219098116;
+    }
+    else
+    {
+        undefined_with(imm15);
+    }
+
+    X(Rt, operand);
+}
+
+//i want to implament data memory barriers eventually
+
+fl_instruction 32 hints(11010101000000110010 imm7_7 11111)
+{
+
+}
+
+fl_instruction 32 sys(1101010100 L_1 01 imm19_19)
+{
+    
+}
+
+fl_instruction 32 barriers(11010101000000110011 CRm_4 op2_3 Rt_5)
+{
+    if (op2 == 2 && Rt == 31)
+    {
+        //clrex
+        _sys(external exclusive_address, -1);
+        _sys(external exclusive_value, -1);
+    }
+}
+
+//LOADS AND STORES
+fl_instruction 32 load_store_register_post(size_2 111 VR_1 00 opc_2 0 imm9_9 01 Rn_5 Rt_5)
+{
+    load_store_register_imm_unscaled(size, VR, opc, imm9, 1, Rn, Rt);
+}
+
+fl_instruction 32 load_store_register_pre(size_2 111 VR_1 00 opc_2 0 imm9_9 11 Rn_5 Rt_5)
+{
+    load_store_register_imm_unscaled(size, VR, opc, imm9, 3, Rn, Rt);
+}
+
+fl_instruction 32 load_store_register_unscaled(size_2 111 VR_1 00 opc_2 0 imm9_9 00 Rn_5 Rt_5)
+{
+    load_store_register_imm_unscaled(size, VR, opc, imm9, 0, Rn, Rt);
+}
+
+fl_instruction 32 load_store_register_pair_imm_offset(opc_2 101 VR_1 010 L_1 imm7_7 Rt2_5 Rn_5 Rt_5)
+{
+    load_store_register_pair_imm(opc, VR, 2, L, imm7, Rt2, Rn, Rt);
+}
+
+fl_instruction 32 load_store_register_pair_imm_post(opc_2 101 VR_1 001 L_1 imm7_7 Rt2_5 Rn_5 Rt_5)
+{
+    load_store_register_pair_imm(opc, VR, 1, L, imm7, Rt2, Rn, Rt);
+}
+
+fl_instruction 32 load_store_register_pair_imm_pre(opc_2 101 VR_1 011 L_1 imm7_7 Rt2_5 Rn_5 Rt_5)
+{
+    load_store_register_pair_imm(opc, VR, 3, L, imm7, Rt2, Rn, Rt);
+}
+
+//0 load
+//1 store
+
+void load_store_register_pair_imm(int opc, int VR,int wb,int L, int imm7, int Rt2, int Rn, int Rt)
+{
+    int wback = wb != 2;
+    int postindex = wb == 1;
+
+    int memop = !L;
+
+    int is_signed = (opc & 1);
+    int scale;
+
+    if (VR)
+    {
+        scale = 2 + opc;
+    }
+    else
+    {
+        scale = 2 + ((opc >> 1) & 1);
+    }
+
+    int datasize = 8 << scale;
+    int offset = sign_extend(imm7, 7) << scale;
+    int dbytes = datasize / 8;
+
+    o64 address = XSP(Rn);
+
+    if (!postindex)
+    {
+        address = address + offset;
+    }
+
+    {
+        o_type S = switch datasize { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64, case 128 : o128 };
+
+        if (VR)
+        {
+            if (memop == 0)
+            {
+                S d0 = mem<S>(address + 0);
+                S d1 = mem<S>(address + dbytes)
+
+                V(Rt, d0);
+                V(Rt2, d1);
+            }
+            else
+            {
+                mem<S>(address, V(Rt));
+                mem<S>(address + dbytes, V(Rt2));
+            }
+        }
+        else
+        {
+            if (memop == 0)
+            {
+                o64 d0 = mem<S>(address + 0);
+                o64 d1 = mem<S>(address + dbytes)
+
+                if (is_signed)
+                {
+                    d0 = extend o64 (o32)d0;
+                    d1 = extend o64 (o32)d1;
+                }
+
+                X(Rt, d0);
+                X(Rt2, d1);
+            }
+            else
+            {
+                mem<S>(address, X(Rt));
+                mem<S>(address + dbytes, X(Rt2));
+            }
+        }
+    }
+
+    if (wback)
+    {
+        if (postindex)
+        {
+            address = address + offset;
+        }
+
+        XSP(Rn, address);
+    }
+}
+
+fl_instruction 32 load_store_register_imm_unsigned(size_2 111 VR_1 01 opc_2 imm12_12 Rn_5 Rt_5)
+{
+    if (size == 3 && VR == 0 && opc == 2)
+    {
+        //PREFETCH
+
+        return;
+    }
+
+    int is_vector = VR == 1;
+
+    int wback = 0;
+    int postindex = 0;
+
+    if (is_vector)
+    {
+        int memop;
+        int regsize;
+        int _signed;
+
+        int scale = (bit_c(opc, 1) << 2) | size;
+        int offset = imm12 << scale;
+
+        if (opc & 1) memop = 0 else memop = 1
+        int datasize = 8 << scale;
+
+        o64 address = XSP(Rn);
+
+        if (!postindex)
+        {
+            address = address + offset;
+        }
+
+        {
+            o_type O = switch datasize { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64, case 128 : o128 };
+
+            if (memop == 1)
+            {
+                O data = V(Rt);
+
+                mem<O>(address, data);
+            }
+            else
+            {
+                O data = mem<O>(address);
+
+                V(Rt, data);
+            }
+        }
+
+        if (wback)
+        {
+            if (postindex)
+            {
+                address = address + offset;
+            }
+
+            XSP(Rn, address);
+        }
+    }
+    else
+    {
+        int memop;
+        int regsize;
+        int _signed;
+
+        int scale = size;
+
+        int offset = imm12 << scale;
+
+        if (bit_c(opc,1) == 0)
+        {
+            if (opc & 1) memop = 0 else memop = 1
+            if (size == 3) regsize = 64 else regsize = 32
+            _signed = false;
+        }
+        else
+        {
+            if (size == 3)
+            {
+                undefined();
+            }
+            else
+            {
+                memop = 0;
+                if (opc & 1) regsize = 32 else regsize = 64
+                _signed = true;
+            }
+        }
+
+        int datasize = 8 << scale;
+
+        o64 address = XSP(Rn);
+
+        if (!postindex)
+        {
+            address = address + offset;
+        }
+
+        {
+            o_type S = switch datasize { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64 };
+            o_type R = switch regsize { case 32 : o32, case 64 : o64 };
+
+            if (memop == 1)
+            {
+                o64 data = X(Rt);
+
+                mem<S>(address, (S)data);
+            }
+            else
+            {
+                o64 n = mem<S>(address);
+
+                if (_signed)
+                {
+                    n = extend R (S)n;
+                }
+
+                X(Rt, n);
+            }
+        }
+
+        if (wback)
+        {
+            if (postindex)
+            {
+                address = address + offset;
+            }
+
+            XSP(Rn, address);
+        }
+    }
+}
+
+void load_store_register_imm_unscaled(int size, int VR, int opc, int imm9, int wb,int Rn, int Rt)
+{
+    if (size == 3 && VR == 0 && opc == 2)
+    {
+        //PREFETCH
+
+        return;
+    }
+
+    int is_vector = VR == 1;
+
+    int wback = wb != 0;
+    int postindex = wb == 1;
+
+    int offset = sign_extend(imm9, 9);
+
+    //0 load
+    //1 store
+
+    if (is_vector)
+    {
+        int memop;
+        int regsize;
+        int _signed;
+
+        int scale = (bit_c(opc, 1) << 2) | size;
+
+        if (opc & 1) memop = 0 else memop = 1
+        int datasize = 8 << scale;
+
+        o64 address = XSP(Rn);
+
+        if (!postindex)
+        {
+            address = address + offset;
+        }
+
+        {
+            o_type O = switch datasize { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64, case 128 : o128 };
+
+            if (memop == 1)
+            {
+                O data = V(Rt);
+
+                mem<O>(address, data);
+            }
+            else
+            {
+                O data = mem<O>(address);
+
+                V(Rt, data);
+            }
+        }
+
+        if (wback)
+        {
+            if (postindex)
+            {
+                address = address + offset;
+            }
+
+            XSP(Rn, address);
+        }
+    }
+    else
+    {
+        int memop;
+        int regsize;
+        int _signed;
+
+        int scale = size;
+
+        if (bit_c(opc,1) == 0)
+        {
+            if (opc & 1) memop = 0 else memop = 1
+            if (size == 3) regsize = 64 else regsize = 32
+            _signed = false;
+        }
+        else
+        {
+            if (size == 3)
+            {
+                undefined();
+            }
+            else
+            {
+                memop = 0;
+                if (opc & 1) regsize = 32 else regsize = 64
+                _signed = true;
+            }
+        }
+
+        int datasize = 8 << scale;
+
+        o64 address = XSP(Rn);
+
+        if (!postindex)
+        {
+            address = address + offset;
+        }
+
+        {
+            o_type S = switch datasize { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64 };
+            o_type R = switch regsize { case 32 : o32, case 64 : o64 };
+
+            if (memop == 1)
+            {
+                o64 data = X(Rt);
+
+                mem<S>(address, (S)data);
+            }
+            else
+            {
+                o64 n = mem<S>(address);
+
+                if (_signed)
+                {
+                    n = extend R (S)n;
+                }
+
+                X(Rt, n);
+            }
+        }
+
+        if (wback)
+        {
+            if (postindex)
+            {
+                address = address + offset;
+            }
+
+            XSP(Rn, address);
+        }
+    }
+}
+
+fl_instruction 32 load_store_register_offset(size_2 111 VR_1 00 opc_2 1 Rm_5 option_3 S_1 10 Rn_5 Rt_5)
+{
+    if (size == 3 && VR == 0 && opc == 2)
+    {
+        //PREFETCH
+
+        return;
+    }
+
+    int is_vector = VR == 1;
+
+    int wback = 0;
+    int postindex = 0;
+
+    //0 load
+    //1 store
+
+    if (is_vector)
+    {
+        int memop;
+        int regsize;
+        int _signed;
+
+        int scale = (bit_c(opc, 1) << 2) | size;
+
+        int shift = scale * S;
+        o64 offset = a_extend_reg_64(Rm, option, shift);
+
+        if (opc & 1) memop = 0 else memop = 1
+        int datasize = 8 << scale;
+
+        o64 address = XSP(Rn) + offset;
+
+        o_type O = switch datasize { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64, case 128 : o128 };
+
+        if (memop == 1)
+        {
+            O data = V(Rt);
+
+            mem<O>(address, data);
+        }
+        else
+        {
+            O data = mem<O>(address);
+
+            V(Rt, data);
+        }
+    }
+    else
+    {
+        int memop;
+        int regsize;
+        int _signed;
+
+        int scale = size;
+
+        int shift = scale * S;
+        o64 offset = a_extend_reg_64(Rm, option, shift);
+
+        if (bit_c(opc,1) == 0)
+        {
+            if (opc & 1) memop = 0 else memop = 1
+            if (size == 3) regsize = 64 else regsize = 32
+            _signed = false;
+        }
+        else
+        {
+            if (size == 3)
+            {
+                undefined();
+            }
+            else
+            {
+                memop = 0;
+                if (opc & 1) regsize = 32 else regsize = 64
+                _signed = true;
+            }
+        }
+
+        int datasize = 8 << scale;
+
+        o64 address = XSP(Rn) + offset;
+
+        o_type S = switch datasize { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64 };
+        o_type R = switch regsize { case 32 : o32, case 64 : o64 };
+
+        if (memop == 1)
+        {
+            o64 data = X(Rt);
+
+            mem<S>(address, (S)data);
+        }
+        else
+        {
+            o64 n = mem<S>(address);
+
+            if (_signed)
+            {
+                n = extend R (S)n;
+            }
+
+            X(Rt, n);
+        }
+    }
+}
+
+fl_instruction 32 load_store_exclusive_ordered(size_2 001000 ordered_1 L_1 0 Rs_5 o0_1 11111 Rn_5 Rt_5)
+{
+    int is_exclusive = ordered == 0;
+
+    if (L)
+    {
+        load_exclusive(is_exclusive, size, Rn, Rt);
+    }
+    else
+    {
+        store_exclusive(is_exclusive, size, Rn, Rt, Rs);
+    }
+}
+
+void load_exclusive(int is_exclusive, int size, int Rn, int Rt)
+{
+    int datasize = 8 << size;
+
+    o64 address = XSP(Rn);
+
+    o_type S = switch datasize { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64 };
+
+    S value = mem<S>(address);
+
+    if (is_exclusive)
+    {
+        _sys(external exclusive_address, address & ~63);
+        _sys(external exclusive_value, value);
+    }
+
+    X(Rt, value);
+}
+
+void store_exclusive(int is_exclusive, int size, int Rn, int Rt, int Rs)
+{
+    int datasize = 8 << size;
+
+    o64 address = XSP(Rn);
+
+    o_type S = switch datasize { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64 };
+
+    if (is_exclusive)
+    {
+        o64 mask = ~63;
+        o64 _exclusive_address = _sys(external exclusive_address)
+
+        if (_exclusive_address == (address & mask))
+        {
+            S to_swap = X(Rt);
+            S expecting = _sys(external exclusive_value);
+
+            S cas_success = compare_and_swap(address, expecting, to_swap, datasize);
+
+            X(Rs, cas_success ^ 1);
+        }
+        else
+        {
+            X(Rs, 1);
+        }
+    }
+    else
+    {
+        mem<S>(address, X(Rt));
+    }
+}

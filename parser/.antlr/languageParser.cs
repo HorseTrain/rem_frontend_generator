@@ -47,8 +47,8 @@ public partial class languageParser : Parser {
 		T__59=60, T__60=61, T__61=62, T__62=63, T__63=64, T__64=65, T__65=66, 
 		T__66=67, T__67=68, T__68=69, T__69=70, T__70=71, T__71=72, T__72=73, 
 		T__73=74, T__74=75, T__75=76, T__76=77, T__77=78, T__78=79, T__79=80, 
-		T__80=81, T__81=82, DECIMAL=83, BINARY=84, HEX=85, IDENTIFIER=86, WHITE_SPACE=87, 
-		LINE_COMMENT=88, BLOB_COMMENT=89;
+		T__80=81, T__81=82, T__82=83, DECIMAL=84, BINARY=85, HEX=86, IDENTIFIER=87, 
+		WHITE_SPACE=88, LINE_COMMENT=89, BLOB_COMMENT=90;
 	public const int
 		RULE_sourceFile = 0, RULE_topLevelDeclarations = 1, RULE_elementInsert = 2, 
 		RULE_elementExtract = 3, RULE_line = 4, RULE_hostMemoryRead = 5, RULE_hostMemoryWrite = 6, 
@@ -92,10 +92,10 @@ public partial class languageParser : Parser {
 		"'INT32_MAX'", "'UINT64_MAX'", "'INT64_MAX'", "'('", "')'", "'-'", "'~'", 
 		"'!'", "'signed'", "'to_float'", "'to_int'", "'extend'", "'<'", "','", 
 		"'>'", "'vector_zero'", "'*'", "'/'", "'sdiv'", "'umulh'", "'smulh'", 
-		"'+'", "'<<'", "'>>'", "'sar'", "'ror'", "'clt'", "'cgt'", "'clte'", "'cgte'", 
-		"'<='", "'>='", "'=='", "'!='", "'&'", "'^'", "'|'", "'&&'", "'||'", "'?'", 
-		"'fl_instruction'", "'true'", "'false'", "'o8'", "'o16'", "'o32'", "'o64'", 
-		"'o128'", "'i64'", "'integer'", "'int'", "'void'", "'o_type'"
+		"'%'", "'+'", "'<<'", "'>>'", "'sar'", "'ror'", "'clt'", "'cgt'", "'clte'", 
+		"'cgte'", "'<='", "'>='", "'=='", "'!='", "'&'", "'^'", "'|'", "'&&'", 
+		"'||'", "'?'", "'fl_instruction'", "'true'", "'false'", "'o8'", "'o16'", 
+		"'o32'", "'o64'", "'o128'", "'i64'", "'integer'", "'int'", "'void'", "'o_type'"
 	};
 	private static readonly string[] _SymbolicNames = {
 		null, null, null, null, null, null, null, null, null, null, null, null, 
@@ -104,8 +104,9 @@ public partial class languageParser : Parser {
 		null, null, null, null, null, null, null, null, null, null, null, null, 
 		null, null, null, null, null, null, null, null, null, null, null, null, 
 		null, null, null, null, null, null, null, null, null, null, null, null, 
-		null, null, null, null, null, null, null, null, null, null, null, "DECIMAL", 
-		"BINARY", "HEX", "IDENTIFIER", "WHITE_SPACE", "LINE_COMMENT", "BLOB_COMMENT"
+		null, null, null, null, null, null, null, null, null, null, null, null, 
+		"DECIMAL", "BINARY", "HEX", "IDENTIFIER", "WHITE_SPACE", "LINE_COMMENT", 
+		"BLOB_COMMENT"
 	};
 	public static readonly IVocabulary DefaultVocabulary = new Vocabulary(_LiteralNames, _SymbolicNames);
 
@@ -165,7 +166,7 @@ public partial class languageParser : Parser {
 			State = 109;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
-			while (((((_la - 70)) & ~0x3f) == 0 && ((1L << (_la - 70)) & 69625L) != 0)) {
+			while (((((_la - 71)) & ~0x3f) == 0 && ((1L << (_la - 71)) & 69625L) != 0)) {
 				{
 				{
 				State = 106;
@@ -213,7 +214,6 @@ public partial class languageParser : Parser {
 			State = 116;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
-			case T__72:
 			case T__73:
 			case T__74:
 			case T__75:
@@ -222,6 +222,7 @@ public partial class languageParser : Parser {
 			case T__78:
 			case T__79:
 			case T__80:
+			case T__81:
 			case IDENTIFIER:
 				EnterOuterAlt(_localctx, 1);
 				{
@@ -229,7 +230,7 @@ public partial class languageParser : Parser {
 				functionDeclaration();
 				}
 				break;
-			case T__69:
+			case T__70:
 				EnterOuterAlt(_localctx, 2);
 				{
 				State = 115;
@@ -1048,7 +1049,7 @@ public partial class languageParser : Parser {
 			State = 206;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
-			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & 27546L) != 0) || ((((_la - 73)) & ~0x3f) == 0 && ((1L << (_la - 73)) & 9215L) != 0)) {
+			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & 27546L) != 0) || ((((_la - 74)) & ~0x3f) == 0 && ((1L << (_la - 74)) & 9215L) != 0)) {
 				{
 				{
 				State = 203;
@@ -1656,7 +1657,7 @@ public partial class languageParser : Parser {
 			State = 285;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
-			if ((((_la) & ~0x3f) == 0 && ((1L << _la) & 39290360758278L) != 0) || ((((_la - 71)) & ~0x3f) == 0 && ((1L << (_la - 71)) & 61443L) != 0)) {
+			if ((((_la) & ~0x3f) == 0 && ((1L << _la) & 39290360758278L) != 0) || ((((_la - 72)) & ~0x3f) == 0 && ((1L << (_la - 72)) & 61443L) != 0)) {
 				{
 				State = 277;
 				expression(0);
@@ -1852,7 +1853,7 @@ public partial class languageParser : Parser {
 						if (!(Precpred(Context, 11))) throw new FailedPredicateException(this, "Precpred(Context, 11)");
 						State = 303;
 						_la = TokenStream.LA(1);
-						if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 2181431069507584L) != 0)) ) {
+						if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 4433230883192832L) != 0)) ) {
 						ErrorHandler.RecoverInline(this);
 						}
 						else {
@@ -1871,7 +1872,7 @@ public partial class languageParser : Parser {
 						if (!(Precpred(Context, 10))) throw new FailedPredicateException(this, "Precpred(Context, 10)");
 						State = 306;
 						_la = TokenStream.LA(1);
-						if ( !(_la==T__34 || _la==T__50) ) {
+						if ( !(_la==T__34 || _la==T__51) ) {
 						ErrorHandler.RecoverInline(this);
 						}
 						else {
@@ -1890,7 +1891,7 @@ public partial class languageParser : Parser {
 						if (!(Precpred(Context, 9))) throw new FailedPredicateException(this, "Precpred(Context, 9)");
 						State = 309;
 						_la = TokenStream.LA(1);
-						if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 67553994410557440L) != 0)) ) {
+						if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 135107988821114880L) != 0)) ) {
 						ErrorHandler.RecoverInline(this);
 						}
 						else {
@@ -1909,7 +1910,7 @@ public partial class languageParser : Parser {
 						if (!(Precpred(Context, 8))) throw new FailedPredicateException(this, "Precpred(Context, 8)");
 						State = 312;
 						_la = TokenStream.LA(1);
-						if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 4539650414622015488L) != 0)) ) {
+						if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 9079278839011475456L) != 0)) ) {
 						ErrorHandler.RecoverInline(this);
 						}
 						else {
@@ -1928,7 +1929,7 @@ public partial class languageParser : Parser {
 						if (!(Precpred(Context, 7))) throw new FailedPredicateException(this, "Precpred(Context, 7)");
 						State = 315;
 						_la = TokenStream.LA(1);
-						if ( !(_la==T__61 || _la==T__62) ) {
+						if ( !(_la==T__62 || _la==T__63) ) {
 						ErrorHandler.RecoverInline(this);
 						}
 						else {
@@ -1946,7 +1947,7 @@ public partial class languageParser : Parser {
 						State = 317;
 						if (!(Precpred(Context, 6))) throw new FailedPredicateException(this, "Precpred(Context, 6)");
 						State = 318;
-						Match(T__63);
+						Match(T__64);
 						State = 319;
 						expression(7);
 						}
@@ -1958,7 +1959,7 @@ public partial class languageParser : Parser {
 						State = 320;
 						if (!(Precpred(Context, 5))) throw new FailedPredicateException(this, "Precpred(Context, 5)");
 						State = 321;
-						Match(T__64);
+						Match(T__65);
 						State = 322;
 						expression(6);
 						}
@@ -1970,7 +1971,7 @@ public partial class languageParser : Parser {
 						State = 323;
 						if (!(Precpred(Context, 4))) throw new FailedPredicateException(this, "Precpred(Context, 4)");
 						State = 324;
-						Match(T__65);
+						Match(T__66);
 						State = 325;
 						expression(5);
 						}
@@ -1982,7 +1983,7 @@ public partial class languageParser : Parser {
 						State = 326;
 						if (!(Precpred(Context, 3))) throw new FailedPredicateException(this, "Precpred(Context, 3)");
 						State = 327;
-						Match(T__66);
+						Match(T__67);
 						State = 328;
 						expression(4);
 						}
@@ -1994,7 +1995,7 @@ public partial class languageParser : Parser {
 						State = 329;
 						if (!(Precpred(Context, 2))) throw new FailedPredicateException(this, "Precpred(Context, 2)");
 						State = 330;
-						Match(T__67);
+						Match(T__68);
 						State = 331;
 						expression(3);
 						}
@@ -2006,7 +2007,7 @@ public partial class languageParser : Parser {
 						State = 332;
 						if (!(Precpred(Context, 1))) throw new FailedPredicateException(this, "Precpred(Context, 1)");
 						State = 333;
-						Match(T__68);
+						Match(T__69);
 						State = 334;
 						expression(0);
 						State = 335;
@@ -2115,7 +2116,7 @@ public partial class languageParser : Parser {
 			State = 351;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
-			while (((((_la - 83)) & ~0x3f) == 0 && ((1L << (_la - 83)) & 15L) != 0)) {
+			while (((((_la - 84)) & ~0x3f) == 0 && ((1L << (_la - 84)) & 15L) != 0)) {
 				{
 				{
 				State = 348;
@@ -2169,7 +2170,7 @@ public partial class languageParser : Parser {
 			EnterOuterAlt(_localctx, 1);
 			{
 			State = 356;
-			Match(T__69);
+			Match(T__70);
 			State = 357;
 			number();
 			State = 358;
@@ -2385,11 +2386,11 @@ public partial class languageParser : Parser {
 			State = 381;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
-			case T__72:
 			case T__73:
 			case T__74:
 			case T__75:
 			case T__76:
+			case T__77:
 			case IDENTIFIER:
 				EnterOuterAlt(_localctx, 1);
 				{
@@ -2397,10 +2398,10 @@ public partial class languageParser : Parser {
 				runtimeOperandType();
 				}
 				break;
-			case T__77:
 			case T__78:
 			case T__79:
 			case T__80:
+			case T__81:
 				EnterOuterAlt(_localctx, 2);
 				{
 				State = 380;
@@ -2472,7 +2473,7 @@ public partial class languageParser : Parser {
 			State = 390;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
-			if (((((_la - 73)) & ~0x3f) == 0 && ((1L << (_la - 73)) & 8703L) != 0)) {
+			if (((((_la - 74)) & ~0x3f) == 0 && ((1L << (_la - 74)) & 8703L) != 0)) {
 				{
 				State = 389;
 				functionParameters();
@@ -2545,7 +2546,7 @@ public partial class languageParser : Parser {
 			{
 			State = 397;
 			_la = TokenStream.LA(1);
-			if ( !(_la==T__70 || _la==T__71) ) {
+			if ( !(_la==T__71 || _la==T__72) ) {
 			ErrorHandler.RecoverInline(this);
 			}
 			else {
@@ -2586,7 +2587,7 @@ public partial class languageParser : Parser {
 			{
 			State = 399;
 			_la = TokenStream.LA(1);
-			if ( !(((((_la - 83)) & ~0x3f) == 0 && ((1L << (_la - 83)) & 7L) != 0)) ) {
+			if ( !(((((_la - 84)) & ~0x3f) == 0 && ((1L << (_la - 84)) & 7L) != 0)) ) {
 			ErrorHandler.RecoverInline(this);
 			}
 			else {
@@ -2625,39 +2626,39 @@ public partial class languageParser : Parser {
 			State = 407;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
-			case T__72:
+			case T__73:
 				EnterOuterAlt(_localctx, 1);
 				{
 				State = 401;
-				Match(T__72);
-				}
-				break;
-			case T__73:
-				EnterOuterAlt(_localctx, 2);
-				{
-				State = 402;
 				Match(T__73);
 				}
 				break;
 			case T__74:
-				EnterOuterAlt(_localctx, 3);
+				EnterOuterAlt(_localctx, 2);
 				{
-				State = 403;
+				State = 402;
 				Match(T__74);
 				}
 				break;
 			case T__75:
-				EnterOuterAlt(_localctx, 4);
+				EnterOuterAlt(_localctx, 3);
 				{
-				State = 404;
+				State = 403;
 				Match(T__75);
 				}
 				break;
 			case T__76:
+				EnterOuterAlt(_localctx, 4);
+				{
+				State = 404;
+				Match(T__76);
+				}
+				break;
+			case T__77:
 				EnterOuterAlt(_localctx, 5);
 				{
 				State = 405;
-				Match(T__76);
+				Match(T__77);
 				}
 				break;
 			case IDENTIFIER:
@@ -2700,7 +2701,7 @@ public partial class languageParser : Parser {
 			{
 			State = 409;
 			_la = TokenStream.LA(1);
-			if ( !(((((_la - 78)) & ~0x3f) == 0 && ((1L << (_la - 78)) & 15L) != 0)) ) {
+			if ( !(((((_la - 79)) & ~0x3f) == 0 && ((1L << (_la - 79)) & 15L) != 0)) ) {
 			ErrorHandler.RecoverInline(this);
 			}
 			else {
@@ -2848,11 +2849,11 @@ public partial class languageParser : Parser {
 			State = 431;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
-			case T__72:
 			case T__73:
 			case T__74:
 			case T__75:
 			case T__76:
+			case T__77:
 			case IDENTIFIER:
 				EnterOuterAlt(_localctx, 1);
 				{
@@ -2911,7 +2912,7 @@ public partial class languageParser : Parser {
 			EnterOuterAlt(_localctx, 1);
 			{
 			State = 433;
-			Match(T__81);
+			Match(T__82);
 			State = 434;
 			identifier();
 			State = 435;
@@ -3103,7 +3104,7 @@ public partial class languageParser : Parser {
 	}
 
 	private static int[] _serializedATN = {
-		4,1,89,456,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,6,2,7,
+		4,1,90,456,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,6,2,7,
 		7,7,2,8,7,8,2,9,7,9,2,10,7,10,2,11,7,11,2,12,7,12,2,13,7,13,2,14,7,14,
 		2,15,7,15,2,16,7,16,2,17,7,17,2,18,7,18,2,19,7,19,2,20,7,20,2,21,7,21,
 		2,22,7,22,2,23,7,23,2,24,7,24,2,25,7,25,2,26,7,26,2,27,7,27,2,28,7,28,
@@ -3139,8 +3140,8 @@ public partial class languageParser : Parser {
 		1,50,1,50,1,50,1,51,1,51,1,51,1,51,1,51,1,52,1,52,3,52,454,8,52,1,52,0,
 		1,62,53,0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,
 		46,48,50,52,54,56,58,60,62,64,66,68,70,72,74,76,78,80,82,84,86,88,90,92,
-		94,96,98,100,102,104,0,10,1,0,17,32,1,0,35,37,1,0,46,50,2,0,35,35,51,51,
-		1,0,52,55,3,0,42,42,44,44,56,61,1,0,62,63,1,0,71,72,1,0,83,85,1,0,78,81,
+		94,96,98,100,102,104,0,10,1,0,17,32,1,0,35,37,1,0,46,51,2,0,35,35,52,52,
+		1,0,53,56,3,0,42,42,44,44,57,62,1,0,63,64,1,0,72,73,1,0,84,86,1,0,79,82,
 		469,0,109,1,0,0,0,2,116,1,0,0,0,4,118,1,0,0,0,6,124,1,0,0,0,8,142,1,0,
 		0,0,10,144,1,0,0,0,12,148,1,0,0,0,14,152,1,0,0,0,16,154,1,0,0,0,18,156,
 		1,0,0,0,20,163,1,0,0,0,22,168,1,0,0,0,24,179,1,0,0,0,26,183,1,0,0,0,28,
@@ -3211,10 +3212,10 @@ public partial class languageParser : Parser {
 		12,305,306,10,10,0,0,306,307,7,3,0,0,307,339,3,62,31,11,308,309,10,9,0,
 		0,309,310,7,4,0,0,310,339,3,62,31,10,311,312,10,8,0,0,312,313,7,5,0,0,
 		313,339,3,62,31,9,314,315,10,7,0,0,315,316,7,6,0,0,316,339,3,62,31,8,317,
-		318,10,6,0,0,318,319,5,64,0,0,319,339,3,62,31,7,320,321,10,5,0,0,321,322,
-		5,65,0,0,322,339,3,62,31,6,323,324,10,4,0,0,324,325,5,66,0,0,325,339,3,
-		62,31,5,326,327,10,3,0,0,327,328,5,67,0,0,328,339,3,62,31,4,329,330,10,
-		2,0,0,330,331,5,68,0,0,331,339,3,62,31,3,332,333,10,1,0,0,333,334,5,69,
+		318,10,6,0,0,318,319,5,65,0,0,319,339,3,62,31,7,320,321,10,5,0,0,321,322,
+		5,66,0,0,322,339,3,62,31,6,323,324,10,4,0,0,324,325,5,67,0,0,325,339,3,
+		62,31,5,326,327,10,3,0,0,327,328,5,68,0,0,328,339,3,62,31,4,329,330,10,
+		2,0,0,330,331,5,69,0,0,331,339,3,62,31,3,332,333,10,1,0,0,333,334,5,70,
 		0,0,334,335,3,62,31,0,335,336,5,6,0,0,336,337,3,62,31,2,337,339,1,0,0,
 		0,338,302,1,0,0,0,338,305,1,0,0,0,338,308,1,0,0,0,338,311,1,0,0,0,338,
 		314,1,0,0,0,338,317,1,0,0,0,338,320,1,0,0,0,338,323,1,0,0,0,338,326,1,
@@ -3223,7 +3224,7 @@ public partial class languageParser : Parser {
 		3,86,43,0,345,343,1,0,0,0,345,344,1,0,0,0,346,65,1,0,0,0,347,351,5,33,
 		0,0,348,350,3,64,32,0,349,348,1,0,0,0,350,353,1,0,0,0,351,349,1,0,0,0,
 		351,352,1,0,0,0,352,354,1,0,0,0,353,351,1,0,0,0,354,355,5,34,0,0,355,67,
-		1,0,0,0,356,357,5,70,0,0,357,358,3,86,43,0,358,359,3,82,41,0,359,360,3,
+		1,0,0,0,356,357,5,71,0,0,357,358,3,86,43,0,358,359,3,82,41,0,359,360,3,
 		66,33,0,360,361,3,34,17,0,361,69,1,0,0,0,362,363,3,68,34,0,363,71,1,0,
 		0,0,364,365,3,78,39,0,365,366,3,82,41,0,366,73,1,0,0,0,367,372,3,72,36,
 		0,368,369,5,43,0,0,369,371,3,72,36,0,370,368,1,0,0,0,371,374,1,0,0,0,372,
@@ -3233,9 +3234,9 @@ public partial class languageParser : Parser {
 		1,0,0,0,383,384,3,78,39,0,384,386,3,82,41,0,385,387,3,56,28,0,386,385,
 		1,0,0,0,386,387,1,0,0,0,387,388,1,0,0,0,388,390,5,33,0,0,389,391,3,74,
 		37,0,390,389,1,0,0,0,390,391,1,0,0,0,391,392,1,0,0,0,392,393,5,34,0,0,
-		393,394,3,76,38,0,394,81,1,0,0,0,395,396,5,86,0,0,396,83,1,0,0,0,397,398,
-		7,7,0,0,398,85,1,0,0,0,399,400,7,8,0,0,400,87,1,0,0,0,401,408,5,73,0,0,
-		402,408,5,74,0,0,403,408,5,75,0,0,404,408,5,76,0,0,405,408,5,77,0,0,406,
+		393,394,3,76,38,0,394,81,1,0,0,0,395,396,5,87,0,0,396,83,1,0,0,0,397,398,
+		7,7,0,0,398,85,1,0,0,0,399,400,7,8,0,0,400,87,1,0,0,0,401,408,5,74,0,0,
+		402,408,5,75,0,0,403,408,5,76,0,0,404,408,5,77,0,0,405,408,5,78,0,0,406,
 		408,3,82,41,0,407,401,1,0,0,0,407,402,1,0,0,0,407,403,1,0,0,0,407,404,
 		1,0,0,0,407,405,1,0,0,0,407,406,1,0,0,0,408,89,1,0,0,0,409,410,7,9,0,0,
 		410,91,1,0,0,0,411,412,5,5,0,0,412,413,3,62,31,0,413,414,5,6,0,0,414,415,
@@ -3243,7 +3244,7 @@ public partial class languageParser : Parser {
 		0,0,419,424,3,92,46,0,420,421,5,43,0,0,421,423,3,92,46,0,422,420,1,0,0,
 		0,423,426,1,0,0,0,424,422,1,0,0,0,424,425,1,0,0,0,425,427,1,0,0,0,426,
 		424,1,0,0,0,427,428,5,10,0,0,428,95,1,0,0,0,429,432,3,88,44,0,430,432,
-		3,94,47,0,431,429,1,0,0,0,431,430,1,0,0,0,432,97,1,0,0,0,433,434,5,82,
+		3,94,47,0,431,429,1,0,0,0,431,430,1,0,0,0,432,97,1,0,0,0,433,434,5,83,
 		0,0,434,435,3,82,41,0,435,436,5,12,0,0,436,440,3,96,48,0,437,439,3,8,4,
 		0,438,437,1,0,0,0,439,442,1,0,0,0,440,438,1,0,0,0,440,441,1,0,0,0,441,
 		99,1,0,0,0,442,440,1,0,0,0,443,444,3,78,39,0,444,445,3,82,41,0,445,101,

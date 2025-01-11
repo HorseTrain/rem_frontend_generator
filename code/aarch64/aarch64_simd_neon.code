@@ -1,0 +1,1851 @@
+/*
+    Advanced SIMD copy
+*/
+fl_instruction 32 dup_general (0 Q_1 001110000 imm5_5 000011 Rn_5 Rd_5)
+{
+    int size = lowest_bit_set_c(bits_c(imm5, 3, 0));
+
+    int esize = 8 << size;
+    int datasize = 64 << Q;
+
+    o64 element = X(Rn);
+    int elements = datasize / esize;
+
+    o128 result = vector_zero;
+
+    loop (elements) e
+    {
+        elm result e esize element;
+    }
+
+    V(Rd, result);
+}
+
+fl_instruction 32 dup_element_scalar (01011110000 imm5_5 000001 Rn_5 Rd_5)
+{
+    int size = lowest_bit_set_c(bits_c(imm5, 3, 0));
+    int index = bits_c(imm5, 4, size + 1);
+    int idxdsize = 64 << bit_c(imm5, 4);
+    int esize = 8 << size;
+    int datasize = esize;
+    int elements = 1;
+
+    dup_element(index, esize, elements, Rn, Rd);
+}
+
+fl_instruction 32 dup_element_vector (0 Q_1 001110000 imm5_5 000001 Rn_5 Rd_5)
+{
+    int size = lowest_bit_set_c(bits_c(imm5, 3, 0));
+    int index = bits_c(imm5, 4, size + 1);
+    int idxdsize = 64 << bit_c(imm5, 4);
+    int esize = 8 << size;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    dup_element(index, esize, elements, Rn, Rd);
+}
+
+/*
+    SMOV
+    UMOV
+*/
+fl_instruction 32 move_to_gp (0 Q_1 001110000 imm5_5 001 U_1 11 Rn_5 Rd_5)
+{
+    int size = lowest_bit_set_c(bits_c(imm5, 3, 0));
+
+    int esize = 8 << size;
+    int datasize = 32 << Q;
+    int index = bits_c(imm5, 4, size + 1);
+
+    o128 operand = V(Rn);
+
+    o_type S = switch esize { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64 };
+    o_type R = switch datasize { case 32 : o32, case 64 : o64 };
+
+    R working_operand = elm operand index esize;
+
+    if (!U)
+    {
+        working_operand = extend R (S)working_operand;
+    }
+
+    X(Rd, working_operand);
+}
+
+fl_instruction 32 ins_general (01001110000 imm5_5 000111 Rn_5 Rd_5)
+{
+    int size = lowest_bit_set_c(bits_c(imm5, 3, 0));
+    int index = bits_c(imm5, 4, size + 1);
+    int esize = 8 << size;
+
+    o64 element = X(Rn);
+    o128 result = V(Rd);
+
+    elm result index esize element;
+
+    V(Rd, result);
+}
+
+fl_instruction 32 ins_element (01101110000 imm5_5 0 imm4_4 1 Rn_5 Rd_5)
+{
+    int size = lowest_bit_set_c(bits_c(imm5, 3, 0));
+    int dst_index = bits_c(imm5, 4, size + 1);
+    int src_index = bits_c(imm4, 3, size);
+    int esize = 8 << size;
+
+    o128 operand = V(Rn);
+    o128 result = V(Rd);
+
+    elm result dst_index esize (elm operand src_index esize);
+
+    V(Rd, result);
+}
+
+/*
+    Advanced SIMD modified immediate
+*/
+fl_instruction 32 movi_immediate (0 Q_1 op_1 0111100000 immhi_3 cmode_4 01 immlo_5 Rd_5)
+{
+    int d = Rd;
+
+    int imm8 = (immhi << 5) | immlo;
+
+    int cmode_helper = (cmode << 1) | op;
+    int mode = 0;
+
+    //ImmediateOp_ORR
+    if (((cmode_helper & 19) == 2) || ((cmode_helper & 27) == 18))
+    {
+        mode = 0;
+    }
+    //ImmediateOp_BIC
+    else if (((cmode_helper & 19) == 3) || ((cmode_helper & 27) == 19))
+    {
+        mode = 1;
+    }
+    //ImmediateOp_MVNI
+    else if (((cmode_helper & 19) == 1) || ((cmode_helper & 27) == 17) || ((cmode_helper & 29) == 25))
+    {
+        mode = 2;
+    }
+    //ImmediateOp_MOVI
+    else if (((cmode_helper & 19) == 0) || ((cmode_helper & 27) == 16) || ((cmode_helper & 29) == 24) || ((cmode_helper & 30) == 28) || ((cmode_helper & 31) == 30))
+    {
+        mode = 3;
+    }
+    //UNDEFINED
+    else if (cmode_helper == 31)
+    {
+        if (Q == 0)
+        {
+            undefined();
+        }
+
+        mode = 3;
+    }
+    else
+    {
+        undefined();
+    }
+
+    o64 imm64 = expand_imm(op, cmode, imm8);
+    o128 imm = imm64;
+
+    if (Q)
+    {
+        elm imm 1 64 imm64;
+    }
+
+    o128 operand = vector_zero;
+    o128 result = vector_zero;
+
+    if (mode == 3)
+    {
+        result = imm;
+    }
+    else if (mode == 2)
+    {
+        loop (Q + 1) e
+        {
+            elm result e 64 ~(elm imm e 64);
+        }
+    }
+    else if (mode == 0)
+    {
+        operand = V(Rd);
+
+        loop (Q + 1) e
+        {
+            elm result e 64 ((elm operand e 64) | (elm imm e 64));
+        }
+    }
+    else if (mode == 1)
+    {
+        operand = V(Rd);
+
+        loop (Q + 1) e
+        {
+            elm result e 64 ((elm operand e 64) & ~(elm imm e 64));
+        }
+    }
+    else
+    {
+        undefined();
+    }
+
+    V(Rd, result);
+}
+
+fl_instruction 32 fmov_general(sf_1 0011110 ftype_2 10 rmode_1 11 opcode_1 000000 Rn_5 Rd_5)
+{
+    int intsize = 32 << sf;
+    int fltsize = get_flt_size(ftype);
+
+    if (intsize != fltsize)
+    {
+        undefined();
+    }
+
+    int size = intsize;
+
+    int part = rmode;
+    int int_to_float = opcode;
+
+    if (int_to_float)
+    {
+        o64 src = X(Rn);
+
+        o_type O = switch size { case 32 : o32, case 64 : o64 };
+
+        VPart(Rd, part, size, (O)src);
+    }
+    else
+    {
+        o128 v = V(Rn);
+
+        o64 src = elm v part size;
+
+        X(Rd, src);
+    } 
+}
+
+fl_instruction 32 convert_to_float_gp(sf_1 0011110 ftype_2 10001 U_1 000000 Rn_5 Rd_5)
+{
+    convert_to_float(sf, ftype, U, Rn, Rd, false);
+}
+
+fl_instruction 32 convert_to_float_vector_scalar(01 U_1 111100 sz_1 100001110110 Rn_5 Rd_5)
+{
+    convert_to_float(sz, sz, U, Rn, Rd, true);
+}
+
+/*
+    SCVTF vector-scalar
+    UCVTF vector-scalar
+*/
+fl_instruction 32 convert_to_float_vector(0 Q_1 U_1 011100 sz_1 100001110110 Rn_5 Rd_5)
+{
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o128 operand = V(Rn);
+    o128 result = vector_zero;
+
+    o_type F = switch esize { case 16 : o16, case 32 : o32, case 64 : o64 };
+
+    loop (elements) e
+    {
+        o64 element = elm operand e esize;
+        o64 working;
+
+        if (U)
+        {
+            working = to_float F element;
+        }
+        else
+        {
+            working = to_float signed F element;
+        }
+        
+        elm result e esize working;
+    }
+
+    V(Rd, result);
+}
+
+fl_instruction 32 floating_point_scalar(00011110 ftype_2 1 Rm_5 opcode_4 10 Rn_5 Rd_5)
+{
+    int fltsize = get_flt_size(ftype);
+
+    o64 operand1 = V(Rn);
+    o64 operand2 = V(Rm);
+    o64 result;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    if (opcode == 0)
+    {
+        result = FPMul(operand1, operand2, fpcr_state, fltsize);
+    }
+    else if (opcode == 1)
+    {
+        result = FPDiv(operand1, operand2, fpcr_state, fltsize);
+    }
+    else if (opcode == 2)
+    {
+        result = FPAdd(operand1, operand2, fpcr_state, fltsize);
+    }
+    else if (opcode == 3)
+    {   
+        result = FPSub(operand1, operand2, fpcr_state, fltsize);
+    }
+    else if (opcode == 4)
+    {
+        result = FPMax(operand1, operand2, fpcr_state, fltsize);
+    }
+    else if (opcode == 5)
+    {
+        result = FPMin(operand1, operand2, fpcr_state, fltsize);
+    }
+    else if (opcode == 6)
+    {
+        result = FPMaxNum(operand1, operand2, fpcr_state, fltsize);
+    }
+    else if (opcode == 7)
+    {
+        result = FPMinNum(operand1, operand2, fpcr_state, fltsize);
+    }
+    else if (opcode == 8)
+    {
+        result = FPMul(operand1, operand2, fpcr_state, fltsize);
+
+        result = FPNeg(result, fpcr_state, fltsize);
+    }
+    else
+    {
+        undefined_with(opcode);
+    }
+
+    o128 vector = vector_zero;
+
+    elm vector 0 fltsize result;
+
+    V(Rd, vector);
+}
+
+fl_instruction 32 conversion_between_floating_point_and_fixed_point(sf_1 0 S_1 11110 ftype_2 0 rmode_2 opcode_3 scale_6 Rn_5 Rd_5)
+{
+    int intsize = 32 << sf;
+    int fltsize = get_flt_size(ftype);
+    int fracbits = 64 - scale;
+
+    o64 result;
+
+    //int -> float
+    if (rmode == 0)
+    {
+        o64 source = X(Rn);
+
+        result = FixedToFP(source, fracbits, opcode == 3, fltsize, intsize);
+
+        V(Rd, result);
+    }
+    //float -> int
+    else if (rmode == 3)
+    {
+        o64 source = V(Rn);
+
+        result = FPToFixed(source, fracbits, opcode == 1, external FPRounding_ZERO, intsize, fltsize);
+
+        X(Rd, result);
+    }
+    else
+    {
+        undefined_with(100);
+    }
+}
+
+/*
+    SHL vector
+*/
+fl_instruction 32 shl_immedaite(0 Q_1 0011110 immh_4 immb_3 010101 Rn_5 Rd_5)
+{
+    int esize = 8 << highest_bit_set_c(immh, 32);
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    int shift = ((immh << 3) | immb) - esize;
+
+    o128 operand = V(Rn);
+    o128 result = vector_zero;
+
+    loop (elements) e
+    {
+        o64 element = elm operand e esize;
+
+        element = element << shift;
+
+        elm result e esize element;
+    }
+
+    V(Rd, result);
+}
+
+/*
+    SSHR vector
+*/
+fl_instruction 32 sshr_vector(0 Q_1 0011110 immh_4 immb_3 000001 Rn_5 Rd_5)
+{
+    int esize = 8 << highest_bit_set_c(immh, 32);
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    int shift = (esize * 2) - ((immh << 3) | immb);
+
+    o128 operand = V(Rn);
+    o128 result = vector_zero;
+
+    o_type O = switch esize { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64 };
+
+    loop (elements) e
+    {
+        o64 element = elm operand e esize;
+
+        element = shift_right_check(extend o64 (O)element, shift, esize, false);
+
+        elm result e esize element;
+    }
+
+    V(Rd, result);
+}
+
+/*
+    SSHLL
+    SSHLL2
+    USHLL
+    USHLL2
+*/
+fl_instruction 32 shll_shll2(0 Q_1 U_1 011110 immh_4 immb_3 101001 Rn_5 Rd_5)
+{
+    int esize = 8 << highest_bit_set_c(bits_c(immh, 2, 0), 32);
+    int datasize = 64;
+    int part = Q;
+    int elements = datasize / esize;
+
+    int shift = ((immh << 3) | immb) - esize;
+
+    o64 operand = VPart(Rn, part, datasize);
+    o128 result = vector_zero;
+
+    o128 working_vector = vector_zero;
+    elm working_vector 0 datasize operand;
+
+    o_type O = switch esize { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64 };
+
+    loop (elements) e
+    {
+        o64 element = elm working_vector e esize;
+
+        if (!U)
+        {
+            element = extend o64 (O)element;
+        }
+
+        element = element << shift;
+
+        elm result e (2 * esize) element;
+    }
+
+    V(Rd, result);
+}
+
+/*
+    REV64 vector
+*/
+fl_instruction 32 rev64_vector(0 Q_1 001110 size_2 100000000010 Rn_5 Rd_5)
+{
+    int csize = 64;
+    int esize = 8 << size;
+    int datasize = 64 << Q;
+    int containers = datasize / csize;
+
+    o128 operand = V(Rn);
+    o128 result = vector_zero;
+
+    loop (containers) c
+    {
+        o64 container = elm operand c csize;
+
+        elm result c csize reverse(container, esize, csize);
+    }
+
+    V(Rd, result)
+}
+
+/*
+    NEG vector
+*/
+fl_instruction 32 neg_vector(0 Q_1 101110 size_2 100000101110 Rn_5 Rd_5)
+{
+    o128 operand = V(Rn);
+
+    int esize = 8 << size;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o128 result = vector_zero;
+
+    loop (elements) e
+    {
+        elm result e esize -(elm operand e esize);
+    }
+
+    V(Rd, result);
+}
+
+/*
+    NOT vector
+*/
+fl_instruction 32 not_vector(0 Q_1 10111000100000010110 Rn_5 Rd_5)
+{
+    o128 operand = V(Rn);
+
+    int esize = 8;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o128 result = vector_zero;
+
+    loop (elements) e
+    {
+        elm result e esize ~(elm operand e esize);
+    }
+
+    V(Rd, result);
+}
+
+/*
+    ABS vector
+*/
+fl_instruction 32 abs_vector(0 Q_1 001110 size_2 100000101110 Rn_5 Rd_5)
+{
+    o128 operand = V(Rn);
+
+    int esize = 8 << size;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o128 result = vector_zero;
+
+    loop (elements) e
+    {
+        o_type O = switch esize { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64 };
+
+        O working = (elm operand e esize);
+
+        if (working clt 0)
+        {
+            set working -working;
+        }
+
+        elm result e esize working;
+    }
+
+    V(Rd, result);
+}
+
+/*
+    MUL vector index
+*/
+fl_instruction 32 mul_vector_index(0 Q_1 001111 size_2 L_1 M_1 Rm_4 1000 H_1 0 Rn_5 Rd_5)
+{
+    int idxdsize = 64 << H;
+    int index;
+    int rm_hi;
+
+    if (size == 1)
+    {
+        index = H;
+
+        index = L | (index << 1);
+        index = M | (index << 1);
+
+        rm_hi = 0;
+    }
+    else if (size == 2)
+    {   
+        index = H;
+        index = L | (index << 1);
+
+        rm_hi = M;
+    }
+    else
+    {
+        undefined();
+    }
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm | (rm_hi << 4));
+    o128 result = vector_zero;
+
+    int esize = 8 << size;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o64 element2 = elm operand2 index esize;
+
+    loop (elements) e
+    {
+        o64 element1 = elm operand1 e esize;
+
+        o64 product = element1 * element2;
+
+        elm result e esize product;
+    }
+
+    V(Rd, result);
+}
+
+/*
+    MUL vector
+*/
+fl_instruction 32 mul_vector(0 Q_1 001110 size_2 1 Rm_5 100111 Rn_5 Rd_5)
+{
+    int esize = 8 << size;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+    o128 result = vector_zero;
+
+    loop (elements) e
+    {
+        o64 element1 = elm operand1 e esize;
+        o64 element2 = elm operand2 e esize;
+
+        o64 working = element1 * element2;
+
+        elm result e esize working;
+    }
+
+    V(Rd, result);
+}
+
+/*
+    EXT
+*/
+fl_instruction 32 ext(0 Q_1 101110000 Rm_5 0 imm4_4 0 Rn_5 Rd_5)
+{
+    o128 lo = V(Rn);
+    o128 hi = V(Rm);
+
+    int vector_size = 8 << Q;
+    int start = imm4;
+
+    o128 result = vector_zero;
+
+    loop (vector_size) e
+    {
+        o8 working = get_from_concacted_vector(hi, lo, start + e, vector_size, 8);
+
+        elm result e 8 working;
+    }
+
+    V(Rd, result);
+}
+
+/*
+    CMHI vector
+    CMGT vector
+*/
+fl_instruction 32 compare_above(0 Q_1 U_1 01110 size_2 1 Rm_5 001101 Rn_5 Rd_5)
+{
+    int esize = 8 << size;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+    o128 result = vector_zero;
+
+    loop (elements) e
+    {
+        o_type O = switch esize { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64 };
+
+        O element1 = elm operand1 e esize;
+        O element2 = elm operand2 e esize;
+
+        O working;
+
+        if (U)
+        {
+            working = element1 > element2;
+        }
+        else
+        {
+            working = element1 cgt element2;
+        }
+
+        elm result e esize (0 - working);
+    }
+
+    V(Rd, result);
+}
+
+/*
+    USHL
+    SSHL
+*/
+fl_instruction 32 shl_vector(0 Q_1 U_1 01110 size_2 1 Rm_5 010001 Rn_5 Rd_5)
+{
+    int esize = 8 << size;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+    o128 result = vector_zero;
+
+    loop (elements) e
+    {
+        o64 element = elm operand1 e esize;
+        o64 shift = extend o64 (o8)(elm operand2 e esize);
+
+        if (!U)
+        {
+            o_type O = switch esize { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64 };
+    
+            element = extend o64 (O)element;
+        }
+
+        if (shift cgte 0)
+        {
+            set element shift_left_check(element, shift, esize);
+        }
+        else
+        {
+            set shift -shift;
+
+            set element shift_right_check(element, shift, esize,U);
+        }
+
+        elm result e esize element;
+    }
+
+    V(Rd, result);
+}
+
+/*
+    ADD vector
+*/
+fl_instruction 32 add_vector(0 Q_1 001110 size_2 1 Rm_5 100001 Rn_5 Rd_5)
+{
+    int esize = 8 << size;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+    o128 result = vector_zero;
+
+    loop (elements) e
+    {
+        o64 element1 = elm operand1 e esize;
+        o64 element2 = elm operand2 e esize;
+
+        elm result e esize (element1 + element2);
+    }
+
+    V(Rd, result);
+}
+/*
+    UADDLV
+    SADDLV
+*/
+fl_instruction 32 addlv(0 Q_1 U_1 01110 size_2 110000001110 Rn_5 Rd_5)
+{
+    int esize = 8 << size;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    int is_unsigned = U;
+
+    o128 source = V(Rn);
+    o128 operand = V(Rn);
+    
+    o64 sum = 0;
+
+    loop (elements) e
+    {
+        o64 working = (elm operand e esize);
+
+        if (!is_unsigned)
+        {
+            o_type O = switch esize { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64 };
+
+            working = extend o64 (O)working;
+        }
+
+        sum = sum + working;
+    }
+
+    o128 final = vector_zero;
+
+    elm final 0 (2 * esize) sum;
+
+    V(Rd, final);
+}
+
+/*
+    CNT
+*/
+fl_instruction 32 cnt(0 Q_1 001110 size_2 100000010110 Rn_5 Rd_5)
+{
+    int esize = 8;
+    int datasize = 64 << Q;
+    int elements = datasize / 8;
+
+    o128 source = V(Rn);
+    o128 result = vector_zero;
+
+    loop (elements) e
+    {
+        o8 working = elm source e esize;
+        o8 count = 0;
+
+        loop (esize) b
+        {
+            o8 bit = (working >> b) & 1;
+
+            if (bit)
+            {
+                set count (count + 1);
+            }
+        }
+
+        elm result e esize count;
+    } 
+
+    V(Rd, result);
+}
+
+/*
+    ORR vector
+    ORN vector
+*/
+fl_instruction 32 orr_orn_vector(0 Q_1 0011101 invert_1 1 Rm_5 000111 Rn_5 Rd_5)
+{
+    int esize = 64;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+    o128 result = vector_zero;
+
+    loop (elements) e
+    {
+        o64 element1 = elm operand1 e esize;
+        o64 element2 = elm operand2 e esize;
+
+        if (invert)
+        {
+            element2 = ~element2;
+        }
+
+        elm result e esize (element1 | element2);
+    }
+
+    V(Rd, result);
+}
+
+/*
+    BSL
+*/
+fl_instruction 32 bsl_vector(0 Q_1 101110011 Rm_5 000111 Rn_5 Rd_5)
+{
+    int esize = 64;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o128 operand1 = V(Rm);
+    o128 operand2 = V(Rd);
+    o128 operand3 = V(Rn);
+
+    o128 result = vector_zero;
+
+    loop (elements) e
+    {
+        o64 element1 = elm operand1 e esize;
+        o64 element2 = elm operand2 e esize;
+        o64 element3 = elm operand3 e esize;
+
+        elm result e esize (element1 ^ ((element1 ^ element3) & element2));
+    }
+
+    V(Rd, result);
+}
+
+/*
+    AND vector
+    BIC vector
+*/
+fl_instruction 32 and_bic_vector(0 Q_1 0011100 invert_1 1 Rm_5 000111 Rn_5 Rd_5)
+{
+    int esize = 64;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+    o128 result = vector_zero;
+
+    loop (elements) e
+    {
+        o64 element1 = elm operand1 e esize;
+        o64 element2 = elm operand2 e esize;
+
+        if (invert)
+        {
+            element2 = ~element2;
+        }
+
+        elm result e esize (element1 & element2);
+    }
+
+    V(Rd, result);
+}
+
+/*
+    EOR vector
+*/
+fl_instruction 32 eor_vector(0 Q_1 101110001 Rm_5 000111 Rn_5 Rd_5)
+{
+    int esize = 64;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+    o128 result = vector_zero;
+
+    loop (elements) e
+    {
+        o64 element1 = elm operand1 e esize;
+        o64 element2 = elm operand2 e esize;
+
+        elm result e esize (element1 ^ element2);
+    }
+
+    V(Rd, result);
+}
+
+/*
+    XNT
+    XNT2
+*/
+fl_instruction 32 xnt_xnt2(0 Q_1 001110 size_2 100001001010 Rn_5 Rd_5)
+{
+    int esize = 8 << size;
+    int datasize = 64;
+    int part = Q;
+    int elements = datasize / esize;
+
+    o128 operand = V(Rn);
+    o128 result = vector_zero;
+
+    o64 mask = -1;
+
+    if (esize != 64)
+    {
+        mask = (1 << esize) - 1;
+    }
+
+    loop (elements) e
+    {
+        o64 element = elm operand e (2 * esize);
+
+        elm result e esize (element & mask);
+    }
+
+    VPart(Rd, part, datasize, result);
+}
+
+/*
+    ZIP1
+    ZIP2
+*/
+fl_instruction 32 zip(0 Q_1 001110 size_2 0 Rm_5 0 op_1 1110 Rn_5 Rd_5)
+{
+    int esize = 8 << size;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+    int part = op;
+    int pairs = elements / 2;
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+    o128 result = vector_zero;
+
+    int base = part * pairs;
+
+    loop (pairs) p
+    {
+        elm result (2*p+0) esize (elm operand1 (base + p) esize);
+        elm result (2*p+1) esize (elm operand2 (base + p) esize);
+    }
+
+    V(Rd, result);
+}
+
+/*
+    TBL
+*/
+fl_instruction 32 tbl(0 Q_1 001110000 Rm_5 0 len_2 000 Rn_5 Rd_5)
+{
+    store_context();
+
+    o64 vector_context = get_vector_context();
+
+    call(vector_context, Rd, Rn, len, Rm, Q, external table_lookup_fallback);
+
+    load_context();
+}
+
+fl_instruction 32 ld1r_no_offset(0 Q_1 001101010000001100 size_2 Rn_5 Rt_5)
+{
+    ld1(false,Q, 1, 0, 0, 0, 6, 0, size, Rn, Rt);
+}
+
+fl_instruction 32 ld1r_post_index(0 Q_1 001101110 Rm_5 1100 size_2 Rn_5 Rt_5)
+{
+    ld1(true,Q, 1, 0, Rm, 0, 6, 0, size, Rn, Rt);
+}
+
+fl_instruction 32 ld1_single_structure_no_offset(0 Q_1 00110101000000 opcode_2 0 S_1 size_2 Rn_5 Rt_5)
+{
+    ld1(false, Q, 1, 0, 0, 0, opcode << 1, S, size, Rn, Rt);
+}
+
+fl_instruction 32 ld1_single_structure_post_index(0 Q_1 001101110 Rm_5 opcode_2 0 S_1 size_2 Rn_5 Rt_5)
+{
+    ld1(true, Q, 1, 0, Rm, 0, opcode << 1, S, size, Rn, Rt);
+}
+
+//FLOATING POINT
+
+/*
+    FCSEL
+*/
+fl_instruction 32 floating_point_conditional_select(00011110 ftype_2 1 Rm_5 cond_4 11 Rn_5 Rd_5)
+{
+    int fltsize = get_flt_size(ftype);
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+
+    o_type O = switch fltsize { case 32 : o32, case 64 : o64 };
+
+    O result = 0;
+
+    if (condition_holds(cond))
+    {
+        set result operand1;
+    }
+    else
+    {
+        set result operand2;
+    }
+
+    V(Rd, result);
+}
+
+
+/*
+    FCMEQ vector
+*/
+fl_instruction 32 fcmeq_vector(0 Q_1 0011100 sz_1 1 Rm_5 111001 Rn_5 Rd_5)
+{
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+
+    o128 result = vector_zero;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    loop (elements) e
+    {
+        o64 element1 = elm operand1 e esize;
+        o64 element2 = elm operand2 e esize;
+
+        o64 working;
+
+        working = 0 - FPCompareEQ(element1, element2, fpcr_state, esize);
+
+        elm result e esize working;
+    }
+
+    V(Rd, result);
+}
+
+/*
+    FCMGE vector
+    FCMGT vector
+*/
+fl_instruction 32 fcmg_vector_register(0 Q_1 U_1 011100 sz_1 1 Rm_5 111001 Rn_5 Rd_5)
+{
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+
+    o128 result = vector_zero;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    loop (elements) e
+    {
+        o64 element1 = elm operand1 e esize;
+        o64 element2 = elm operand2 e esize;
+
+        o64 working;
+
+        if (U)
+        {
+            working = 0 - FPCompareGE(element1, element2, fpcr_state, esize);
+        }
+        else
+        {
+            working = 0 - FPCompareGT(element1, element2, fpcr_state, esize);
+        }
+
+        elm result e esize working;
+    }
+
+    V(Rd, result);
+}
+
+/*
+    FCMEQ vector zero
+*/
+fl_instruction 32 fcmeq_vector_zero(0 Q_1 0011101 sz_1 100000110110 Rn_5 Rd_5)
+{
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o128 operand1 = V(Rn);
+    o128 result = vector_zero;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    loop (elements) e
+    {
+        o64 element1 = elm operand1 e esize;
+        o64 element2 = 0;
+
+        o64 working = 0 - FPCompareEQ(element1, element2, fpcr_state, esize);
+
+        elm result e esize working;
+    }
+
+    V(Rd, result);
+}
+
+/*
+    FCMGE vector zero
+    FCMGT vector zero
+*/
+fl_instruction 32 fcmg_vector_zero(0 Q_1 U_1 011101 sz_1 100000110010 Rn_5 Rd_5)
+{
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o128 operand1 = V(Rn);
+    o128 result = vector_zero;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    loop (elements) e
+    {
+        o64 element1 = elm operand1 e esize;
+        o64 element2 = 0;
+
+        o64 working;
+
+        if (U)
+        {
+            working = 0 - FPCompareGE(element1, element2, fpcr_state, esize);
+        }
+        else
+        {
+            working = 0 - FPCompareGT(element1, element2, fpcr_state, esize);
+        }
+
+        elm result e esize working;
+    }
+
+    V(Rd, result);
+}
+
+/*
+    FMOV imm
+*/
+fl_instruction 32 fmov_scalar_immediate(00011110 ftype_2 1 imm8_8 10000000 Rd_5)
+{
+    int fltsize = get_flt_size(ftype);
+
+    o64 imm = vfp_expand_imm(imm8, fltsize);
+
+    V(Rd, imm);
+}
+
+/*
+    FCVT scalar
+*/
+fl_instruction 32 fcvt(00011110 ftype_2 10001 opc_2 10000 Rn_5 Rd_5)
+{
+    int srcsize = get_flt_size(ftype);
+    int dstsize = get_flt_size(opc);
+
+    o64 operand = V(Rn);
+    
+    V(Rd,FPConvert(operand, dstsize, srcsize));
+}
+
+/*
+    FABS scalar
+*/
+fl_instruction 32 fabs_scalar(00011110 ftype_2 100000110000 Rn_5 Rd_5)
+{
+    int fltsize = get_flt_size(ftype);
+
+    o64 operand = V(Rn);
+    o64 result = 0;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    result = FPAbs(operand, fpcr_state, fltsize);
+
+    o128 vector = vector_zero;
+
+    elm vector 0 fltsize result;
+
+    V(Rd, vector);
+}
+
+/*
+    FNEG scalar
+*/
+fl_instruction 32 fneg_scalar(00011110 ftype_2 100001010000 Rn_5 Rd_5)
+{
+    int fltsize = get_flt_size(ftype);
+
+    o64 operand = V(Rn);
+    o64 result = 0;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    result = FPNeg(operand, fpcr_state, fltsize);
+
+    o128 vector = vector_zero;
+
+    elm vector 0 fltsize result;
+
+    V(Rd, vector);
+}
+
+/*
+    FSQRT scalar
+*/
+fl_instruction 32 fsqrt_scalar(00011110 ftype_2 100001110000 Rn_5 Rd_5)
+{
+    int fltsize = get_flt_size(ftype);
+
+    o64 operand = V(Rn);
+    o64 result = 0;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    result = FPSqrt(operand, fpcr_state, fltsize);
+
+    o128 vector = vector_zero;
+
+    elm vector 0 fltsize result;
+
+    V(Rd, vector);
+}
+
+/*
+    FCMP
+*/
+fl_instruction 32 fcmp(00011110 ftype_2 1 Rm_5 001000 Rn_5 0 opc_1 000)
+{
+    int datasize = get_flt_size(ftype);
+    int cmp_with_zero = opc == 1;
+
+    o64 operand1 = V(Rn);
+    o64 operand2;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    if (cmp_with_zero)
+    {
+        operand2 = 0;
+    }
+    else
+    {
+        operand2 = V(Rm);
+    }
+
+    o64 nzcv = FPCompare(operand1, operand2, fpcr_state, datasize);
+
+    _sys(external nzcv_n, (nzcv >> 3) & 1);
+    _sys(external nzcv_z, (nzcv >> 2) & 1);
+    _sys(external nzcv_c, (nzcv >> 1) & 1);
+    _sys(external nzcv_v, (nzcv >> 0) & 1);
+}
+
+/*
+    FCCMP scalar
+*/
+fl_instruction 32 fccmp(00011110 ftype_2 1 Rm_5 cond_4 01 Rn_5 0 nzcv_4)
+{
+    int datasize = get_flt_size(ftype);
+
+    o64 operand1 = V(Rn);
+    o64 operand2 = V(Rm);
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    if (condition_holds(cond))
+    {
+        o64 success_nzcv = FPCompare(operand1, operand2, fpcr_state, datasize);
+
+        _sys(external nzcv_n, (success_nzcv >> 3) & 1);
+        _sys(external nzcv_z, (success_nzcv >> 2) & 1);
+        _sys(external nzcv_c, (success_nzcv >> 1) & 1);
+        _sys(external nzcv_v, (success_nzcv >> 0) & 1);
+    }
+    else
+    {
+        _sys(external nzcv_n, (nzcv >> 3) & 1);
+        _sys(external nzcv_z, (nzcv >> 2) & 1);
+        _sys(external nzcv_c, (nzcv >> 1) & 1);
+        _sys(external nzcv_v, (nzcv >> 0) & 1);
+    }
+}
+
+/*
+    FCVTZS
+    FCVTZU
+*/
+fl_instruction 32 fcvtz_scalar_integer(sf_1 0011110 ftype_2 11100 U_1 000000 Rn_5 Rd_5)
+{
+    convert_to_int(sf, ftype, Rd, Rn, external FPRounding_ZERO, U, 0);
+}
+
+/*
+    FCVTNS
+    FCVTNU
+*/
+fl_instruction 32 fcvtn_scalar_integer(sf_1 0011110 ftype_2 10000 U_1 000000 Rn_5 Rd_5)
+{
+    convert_to_int(sf, ftype, Rd, Rn, external FPRounding_TIEEVEN, U, 0);
+}
+
+/*
+    FCVTAS
+    FCVTAU
+*/
+fl_instruction 32 fcvta_scalar_integer(sf_1 0011110 ftype_2 10010 U_1 000000 Rn_5 Rd_5)
+{
+    convert_to_int(sf, ftype, Rd, Rn, external FPRounding_TIEAWAY, U, 0);
+}
+
+/*
+    FCVTMS
+    FCVTMU
+*/
+fl_instruction 32 fcvtm_scalar_integer(sf_1 0011110 ftype_2 11000 U_1 000000 Rn_5 Rd_5)
+{
+    convert_to_int(sf, ftype, Rd, Rn, external FPRounding_NEGINF, U, 0);
+}
+
+/*
+    FADD Vector
+*/
+fl_instruction 32 fadd_vector(0 Q_1 0011100 sz_1 1 Rm_5 110101 Rn_5 Rd_5)
+{
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+    o128 result = vector_zero;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    loop (elements) e
+    {
+        o64 element1 = elm operand1 e esize;
+        o64 element2 = elm operand2 e esize;
+
+        elm result e esize FPAdd(element1, element2, fpcr_state, esize);
+    }
+
+    V(Rd, result);
+}
+
+/*
+    FMUL Vector
+*/
+fl_instruction 32 fmul_vector(0 Q_1 1011100 sz_1 1 Rm_5 110111 Rn_5 Rd_5)
+{
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+    o128 result = vector_zero;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    loop (elements) e
+    {
+        o64 element1 = elm operand1 e esize;
+        o64 element2 = elm operand2 e esize;
+
+        elm result e esize FPMul(element1, element2, fpcr_state, esize);
+    }
+
+    V(Rd, result);
+}
+
+/*
+    FSUB Vector
+*/
+fl_instruction 32 fsub_vector(0 Q_1 0011101 sz_1 1 Rm_5 110101 Rn_5 Rd_5)
+{
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+    o128 result = vector_zero;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    loop (elements) e
+    {
+        o64 element1 = elm operand1 e esize;
+        o64 element2 = elm operand2 e esize;
+
+        elm result e esize FPSub(element1, element2, fpcr_state, esize);
+    }
+
+    V(Rd, result);
+}
+
+/*
+    FDIV Vector
+*/
+fl_instruction 32 fdiv_vector(0 Q_1 1011100 sz_1 1 Rm_5 111111 Rn_5 Rd_5)
+{
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+    o128 result = vector_zero;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    loop (elements) e
+    {
+        o64 element1 = elm operand1 e esize;
+        o64 element2 = elm operand2 e esize;
+
+        elm result e esize FPDiv(element1, element2, fpcr_state, esize);
+    }
+
+    V(Rd, result);
+}
+
+/*
+    FMLA vector
+    FMLS vector
+*/
+fl_instruction 32 fmul_accumulate_vector(0 Q_1 001110 neg_1 sz_1 1 Rm_5 110011 Rn_5 Rd_5)
+{
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+    o128 operand3 = V(Rd);
+
+    o128 result = vector_zero;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    loop (elements) e
+    {
+        o64 element1 = elm operand1 e esize;
+        o64 element2 = elm operand2 e esize;
+        o64 element3 = elm operand3 e esize;
+
+        if (neg)
+        {
+            element1 = FPNeg(element1, fpcr_state, esize);
+        }
+
+        elm result e esize FPMulAdd(element3, element1, element2, fpcr_state, esize);
+    }
+
+    V(Rd, result);
+}
+
+/*
+    FADDP vector
+*/
+fl_instruction 32 faddp_vector(0 Q_1 1011100 sz_1 1 Rm_5 110101 Rn_5 Rd_5)
+{
+    o128 lo = V(Rn);
+    o128 hi = V(Rm);
+
+    o128 result = vector_zero;
+
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    loop (elements) e
+    {
+        o64 element1 = get_from_concacted_vector(hi, lo, 2 * e, datasize / esize, esize);
+        o64 element2 = get_from_concacted_vector(hi, lo, (2 * e) + 1, datasize / esize, esize);
+
+        elm result e esize FPAdd(element1, element2, fpcr_state, esize);
+    }
+
+    V(Rd, result);
+}
+
+/*
+    FRSQRTE scalar
+*/
+fl_instruction 32 frsqrte_scalar(011111101 sz_1 100001110110 Rn_5 Rd_5)
+{
+    int esize = 32 << sz;
+
+    o64 operand = V(Rn);
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    o64 result = FPRSqrtEstimate(operand, fpcr_state, esize);
+
+    if (esize == 32)
+    {
+        result = result & UINT32_MAX;
+    }
+
+    V(Rd, result);
+}
+
+/*
+    FRSQRTE vector
+*/
+fl_instruction 32 frsqrte_vector(0 Q_1 1011101 sz_1 100001110110 Rn_5 Rd_5)
+{
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o128 operand = V(Rn);
+    o128 result = vector_zero;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    loop (elements) e
+    {
+        o64 element = elm operand e esize;
+
+        element = FPRSqrtEstimate(element, fpcr_state, esize);
+
+        elm result e esize element;
+    }
+
+    V(Rd, result);
+}
+
+/*
+    FRSQRTS vector
+*/
+fl_instruction 32 frsqrts_vector(0 Q_1 0011101 sz_1 1 Rm_5 111111 Rn_5 Rd_5)
+{
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+    o128 result = vector_zero;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    loop (elements) e
+    {
+        o64 element1 = elm operand1 e esize;
+        o64 element2 = elm operand2 e esize;
+
+        elm result e esize FPRSqrtStepFused(element1, element2, fpcr_state, esize);
+    }
+
+    V(Rd, result);
+}
+
+/*
+    FMUL scalar element
+*/
+fl_instruction 32 fmul_scalar_by_element(010111111 sz_1 L_1 M_1 Rm_4 1001 H_1 0 Rn_5 Rd_5)
+{
+    int idxdsize = 64 << H;
+    int index;
+    int rm_hi = M;
+
+    int test = (sz << 1) | L;
+
+    if ((test >> 1) == 0)
+    {
+        index = L | (H << 1);
+    }
+    else if (test == 2)
+    {
+        index = H;
+    }
+    else
+    {
+        undefined();
+    }
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm | (rm_hi << 4));
+    o128 result = vector_zero;
+
+    int esize = 32 << sz;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    o64 product = FPMul(operand1, elm operand2 index esize, fpcr_state, esize);
+
+    elm result 0 esize product;
+    
+    V(Rd, result);
+}
+
+/*
+    FMUL vector element
+*/
+fl_instruction 32 fmul_vector_by_element(0 Q_1 0011111 sz_1 L_1 M_1 Rm_4 1001 H_1 0 Rn_5 Rd_5)
+{
+    int idxdsize = 64 << H;
+    int index;
+    int rm_hi = M;
+
+    int test = (sz << 1) | L;
+
+    if ((test >> 1) == 0)
+    {
+        index = L | (H << 1);
+    }
+    else if (test == 2)
+    {
+        index = H;
+    }
+    else
+    {
+        undefined();
+    }
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm | (rm_hi << 4));
+    o128 result = vector_zero;
+
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o64 element2 = elm operand2 index esize;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    loop (elements) e
+    {
+        o64 element1 = elm operand1 e esize;
+
+        elm result e esize FPMul(element1, element2,fpcr_state, esize);
+    }
+
+    V(Rd, result);
+}
+
+/*
+    FMLA scalar element
+    FMLS scalar element
+*/
+fl_instruction 32 fmul_accumulate_scalar(010111111 sz_1 L_1 M_1 Rm_4 0 neg_1 01 H_1 0 Rn_5 Rd_5)
+{
+    int idxdsize = 64 << H;
+    int index;
+    int rm_hi = M;
+
+    int test = (sz << 1) | L;
+
+    if ((test >> 1) == 0)
+    {
+        index = L | (H << 1);
+    }
+    else if (test == 2)
+    {
+        index = H;
+    }
+    else
+    {
+        undefined();
+    }
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm | (rm_hi << 4));
+    o128 operand3 = V(Rd);
+
+    o128 result = vector_zero;
+
+    int esize = 32 << sz;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    o64 element1 = operand1;
+
+    if (neg)
+    {
+        element1 = FPNeg(element1, fpcr_state, esize);
+    }
+
+    o64 product_accumalant = FPMulAdd(operand3, element1, elm operand2 index esize, fpcr_state, esize);
+
+    elm result 0 esize product_accumalant;
+
+    V(Rd, result);
+}
+
+/*
+    FMLA vector element
+    FMLS vector element
+*/
+fl_instruction 32 fmul_accumulate_element(0 Q_1 0011111 sz_1 L_1 M_1 Rm_4 0 neg_1 01 H_1 0 Rn_5 Rd_5)
+{
+    int idxdsize = 64 << H;
+    int index;
+    int rm_hi = M;
+
+    int test = (sz << 1) | L;
+
+    if ((test >> 1) == 0)
+    {
+        index = L | (H << 1);
+    }
+    else if (test == 2)
+    {
+        index = H;
+    }
+    else
+    {
+        undefined();
+    }
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm | (rm_hi << 4));
+    o128 operand3 = V(Rd);
+
+    o128 result = vector_zero;
+
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o64 element2 = elm operand2 index esize;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    loop (elements) e
+    {
+        o64 element1 = elm operand1 e esize;
+        o64 element3 = elm operand3 e esize;
+
+        if (neg)
+        {
+            element1 = FPNeg(element1, fpcr_state, esize);
+        }
+        
+        elm result e esize FPMulAdd(element3, element1, element2, fpcr_state, esize);
+    }
+
+    V(Rd, result);
+}
+
+void frint(int ftype,int Rn, int Rd, int rounding)
+{
+    o128 operand1 = V(Rn);
+    o128 result = vector_zero;
+
+    int esize = get_flt_size(ftype);
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    o64 working = FPRoundInt(operand1, fpcr_state, rounding, esize);
+
+    elm result 0 esize working;
+
+    V(Rd, result);
+}
+
+/*
+    FRINTP scalar
+*/
+fl_instruction 32 frintp_scalar(00011110 ftype_2 100100110000 Rn_5 Rd_5)
+{
+    frint(ftype, Rn, Rd, external FPRounding_POSINF);
+}
+
+/*
+    FRINTM scalar
+*/
+fl_instruction 32 frintm_scalar(00011110 ftype_2 100101010000 Rn_5 Rd_5)
+{
+    frint(ftype, Rn, Rd, external FPRounding_NEGINF);
+}
+
+/*
+    FCVTPS
+    FCVTPU
+*/
+fl_instruction 32 fcvtp_scalar_integer(sf_1 0011110 ftype_2 10100 U_1 000000 Rn_5 Rd_5)
+{
+    convert_to_int(sf, ftype, Rd, Rn, external FPRounding_POSINF, U, 0);
+}

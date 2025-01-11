@@ -173,7 +173,7 @@ expression
     | signExtend
     | elementExtract
     | vectorZero
-    | expression ('*' | '/' | 'sdiv' | 'umulh' | 'smulh') expression
+    | expression ('*' | '/' | 'sdiv' | 'umulh' | 'smulh' | '%') expression
     | expression ('+' | '-') expression
     | expression ('<<' | '>>' | 'sar' | 'ror') expression
     | expression ('clt' | 'cgt' | 'clte' | 'cgte' | '<' | '<=' | '>' | '>=') expression
