@@ -224,6 +224,12 @@ public interface IlanguageVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <return>The visitor result.</return>
 	Result VisitExpression([NotNull] languageParser.ExpressionContext context);
 	/// <summary>
+	/// Visit a parse tree produced by <see cref="languageParser.encodingExtra"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitEncodingExtra([NotNull] languageParser.EncodingExtraContext context);
+	/// <summary>
 	/// Visit a parse tree produced by <see cref="languageParser.fixedLengthInstructionOperand"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>

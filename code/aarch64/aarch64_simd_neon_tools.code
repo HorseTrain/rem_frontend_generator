@@ -334,7 +334,58 @@ o128 replicate_vector(o128 source, int v_size, int count)
     return result;
 }
 
-void ld1(int wback,int Q, int L, int R, int Rm, int o2, int opcode, int S, int size, int Rn, int Rt)
+void st(int wback, int Q, int L, int opcode, int size, int Rm, int Rn, int Rt)
+{
+    int datasize = 64 << Q;
+    int esize = 8 << size;
+    int elements = datasize / esize;
+
+    int ebytes = esize / 8;
+
+    int rpt = 1;
+    int selem = 2;
+
+    o64 address = XSP(Rn);
+
+    int offs = 0;
+    int t = Rt;
+    int m = Rm;
+
+    o_type O = switch (ebytes * 8) { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64, case 128 : o128 };
+
+    loop (rpt) r
+    {
+        loop (elements) e
+        {
+            int tt = (t + r) % 32;
+
+            loop (selem) s
+            {
+                o128 rval = V(tt);
+                o64 eaddr = address + offs;
+                mem<O>(eaddr, elm rval e esize);
+                offs = offs + ebytes;
+                tt = (tt + 1) % 32;
+            }
+        }
+    }
+
+    if (wback)
+    {
+        o64 _offs = offs;
+
+        if (Rm != 31)
+        {
+            _offs = X(Rm);
+        }
+
+        address = address + _offs;
+        
+        XSP(Rn, address);
+    }
+}
+
+void memory_1(int wback,int Q, int L, int R, int Rm, int o2, int opcode, int S, int size, int Rn, int Rt, int is_load)
 {
     int scale = bits_c(opcode, 2, 1);
     int selem = ((bit_c(opcode, 0) << 1) | R) + 1;
@@ -402,18 +453,35 @@ void ld1(int wback,int Q, int L, int R, int Rm, int o2, int opcode, int S, int s
     }
     else
     {
-        loop (selem) s
+        if (is_load)
         {
-            o128 rval = V(t);
+            loop (selem) s
+            {
+                o128 rval = V(t);
 
-            o64 eaddr = address + offs;
+                o64 eaddr = address + offs;
 
-            elm rval index esize mem<O>(eaddr);
+                elm rval index esize mem<O>(eaddr);
 
-            V(t, rval);
+                V(t, rval);
 
-            offs = offs + ebytes;
-            t = ( t + 1 ) % 32;
+                offs = offs + ebytes;
+                t = ( t + 1 ) % 32;
+            }
+        }
+        else
+        {
+            loop (selem) s
+            {
+                o128 rval = V(t);
+
+                o64 eaddr = address + offs;
+
+                mem<O>(eaddr, elm rval index esize);
+
+                offs = offs + ebytes;
+                t = ( t + 1 ) % 32;
+            }
         }
     }
 
@@ -430,6 +498,53 @@ void ld1(int wback,int Q, int L, int R, int Rm, int o2, int opcode, int S, int s
         
         XSP(Rn, address);
     }
+}
+
+void fcm_vector(int Rd, int Rn, int Rm, int mode, int Q, int sz)
+{
+    o128 n = V(Rn);
+    o128 m;
+
+    o128 result = vector_zero;
+
+    if (Rm == -1)
+    {
+        m = vector_zero;
+    }
+    else
+    {
+        m = V(Rm);
+    }
+
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    loop (elements) e
+    {
+        o64 element1 = elm n e esize;
+        o64 element2 = elm m e esize;
+        o64 element_result;
+
+        if (mode == 0)
+        {
+            element_result = 0 - FPCompareEQ(element1, element2, fpcr_state, esize);
+        }
+        else if (mode == 1)
+        {
+            element_result = 0 - FPCompareGT(element1, element2, fpcr_state, esize);
+        }
+        else if (mode == 2)
+        {
+            element_result = 0 - FPCompareGE(element1, element2, fpcr_state, esize);
+        }
+
+        elm result e esize element_result;
+    }
+
+    V(Rd, result);
 }
 
 //soft binary

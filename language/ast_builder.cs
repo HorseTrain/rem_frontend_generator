@@ -123,8 +123,32 @@ namespace rem_frontend_generator.language
 
         public override i_ast_object VisitNumber([NotNull] NumberContext context)
         {
-            number result = new number(BigInteger.Parse(context.GetText()), nonvoid_type);
+            string text = context.GetText();
 
+            number result;
+
+            if (text.StartsWith("0b") || text.StartsWith("0B"))
+            {
+                text = text.Substring(2);
+
+                BigInteger result_temp = 0;
+
+                for (int i = 0; i < text.Length; ++i)
+                {
+                    int location = text.Length - i - 1;
+
+                    if (text[i] == '1')
+                    {
+                        result_temp |= 1 << location;
+                    }
+                }
+
+                result = new number(result_temp, nonvoid_type);
+            }
+            else
+            {
+                result = new number(BigInteger.Parse(context.GetText()), nonvoid_type);
+            }
             return result;
         }
 
@@ -526,6 +550,14 @@ namespace rem_frontend_generator.language
 
                     working_operand.data = parts[0];
                     working_operand.size = int.Parse(parts[1]);
+
+                    if (i.encodingExtra() != null)
+                    {
+                        var extra = i.encodingExtra();
+
+                        working_operand.extra_rule = extra.GetChild(0).GetText();
+                        working_operand.extra_number = (int)(Visit(extra.number()) as number).value;                        
+                    }
                 }
                 else
                 {

@@ -420,6 +420,18 @@ public partial class languageBaseListener : IlanguageListener {
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitExpression([NotNull] languageParser.ExpressionContext context) { }
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.encodingExtra"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterEncodingExtra([NotNull] languageParser.EncodingExtraContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.encodingExtra"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitEncodingExtra([NotNull] languageParser.EncodingExtraContext context) { }
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="languageParser.fixedLengthInstructionOperand"/>.
 	/// <para>The default implementation does nothing.</para>
 	/// </summary>

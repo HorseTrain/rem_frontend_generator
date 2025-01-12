@@ -862,7 +862,7 @@ uint64_t convert_to_float(uint64_t source, bool is_signed)
 #include ""string.h""
 #include ""tools/big_number.h""
 
-static void append_table(guest_process* process, std::string encoding, void* emit, void* interperate, std::string name)
+static void append_table(guest_process* process, std::string encoding, void* emit, void* interperate, void* decoder_helper,std::string name)
 {
 	uint32_t instruction = 0;
 	uint32_t mask = 0;
@@ -884,7 +884,7 @@ static void append_table(guest_process* process, std::string encoding, void* emi
 		}
 	}
 
-	fixed_length_decoder<uint32_t>::insert_entry(&process->decoder, instruction, mask, emit, interperate, name);
+	fixed_length_decoder<uint32_t>::insert_entry(&process->decoder, instruction, mask, emit, interperate, decoder_helper, name);
 }
 
 template <typename T>
@@ -976,7 +976,17 @@ static ir_operand copy_new_raw_size(ssa_emit_context* ctx, ir_operand source, ui
                     throw new Exception();
                 }
 
-                table_create_function += $"\tappend_table(process, \"{instruction}\", (void*)emit_{get_name_with_interpreted(f.function_name, false)}, (void*)call_{get_name_with_interpreted(f.function_name, true)}, \"{f.function_name}\");\n";
+                bool needs_help = false;
+
+                foreach (instruction_operand operand in f.fixed_length_operand_data)
+                {
+                    if (operand.extra_rule == null)
+                        continue;
+
+                    needs_help = true;
+                }
+
+                table_create_function += $"\tappend_table(process, \"{instruction}\", (void*)emit_{get_name_with_interpreted(f.function_name, false)}, (void*)call_{get_name_with_interpreted(f.function_name, true)},{(needs_help ? $"(void*)help_decode_{f.function_name}" : "nullptr")}, \"{f.function_name}\");\n";
 
                 {
                     cpp_file.Append($"static void call_{get_name_with_interpreted(f.function_name, true)}({get_default_parameter(true)}, uint32_t instruction)\n{{\n");
@@ -998,6 +1008,30 @@ static ir_operand copy_new_raw_size(ssa_emit_context* ctx, ir_operand source, ui
                     cpp_file.Append($"\t{function_call};\n");
 
                     cpp_file.Append("}\n\n");
+                }
+
+                if (needs_help)
+                {
+                    cpp_file.Append($"static bool help_decode_{f.function_name}(uint32_t instruction)\n{{\n");
+
+                    foreach (instruction_operand operand in f.fixed_length_operand_data)
+                    {
+                        if (operand.extra_rule == null)
+                            continue;
+
+                        switch (operand.extra_rule)
+                        {
+                            case "!=":
+                            case "==":
+                            {
+                                cpp_file.Append($"\tif (((instruction >> {offsets[operand.data]}) & {(1 << operand.size) - 1}) == {operand.extra_number}) return false;\n");
+                            }; break;
+
+                            default: throw new Exception();
+                        }
+                    }
+
+                    cpp_file.Append("\treturn true;\n}\n\n");
                 }
 
                 {

@@ -186,8 +186,13 @@ expression
     | expression '?' expression ':' expression
     ;
 
+encodingExtra
+    : '!=' number
+    | '==' number
+    ;
+
 fixedLengthInstructionOperand
-    : identifier
+    : identifier encodingExtra?
     | number
     ;
 
