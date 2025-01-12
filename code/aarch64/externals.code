@@ -15,6 +15,9 @@ o64 get_vector_context() external
 void store_context() external
 void load_context() external
 
+int use_fast_float() external
+int use_x86_sse() external
+
 //pc
 int _get_pc() external
 

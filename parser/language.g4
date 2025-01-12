@@ -132,7 +132,7 @@ cast
     ;
 
 unaryExpression
-    : ('-' | '~' | '!') baseExpression
+    : ('-' | '~' | '!' | 'fsqrt' ) baseExpression
     ;
 
 signedSign
@@ -173,11 +173,12 @@ expression
     | signExtend
     | elementExtract
     | vectorZero
-    | expression ('*' | '/' | 'sdiv' | 'umulh' | 'smulh' | '%') expression
-    | expression ('+' | '-') expression
+    | expression ('*' | '/' | 'sdiv' | 'umulh' | 'smulh' | '%' | 'fmul' | 'fdiv') expression
+    | expression ('+' | '-' | 'fadd' | 'fsub') expression
     | expression ('<<' | '>>' | 'sar' | 'ror') expression
-    | expression ('clt' | 'cgt' | 'clte' | 'cgte' | '<' | '<=' | '>' | '>=') expression
-    | expression ('==' | '!=') expression
+    | expression ('clt' | 'cgt' | 'clte' | 'cgte' | '<' | '<=' | '>' | '>=' | 'fclt' | 'fclte' | 'fcgt' | 'fcgte') expression
+    | expression ('==' | '!=' | 'feq' | 'fneq') expression
+    | expression ('fmax' | 'fmin') expression
     | expression '&' expression
     | expression '^' expression
     | expression '|' expression

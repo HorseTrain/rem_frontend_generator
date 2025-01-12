@@ -461,6 +461,31 @@ fl_instruction 32 shll_shll2(0 Q_1 U_1 011110 immh_4 != 0 immb_3 101001 Rn_5 Rd_
 }
 
 /*
+    SHRN
+    SHRN2
+*/
+fl_instruction 32 shrn(0 Q_1 0011110 immh_4 != 0b0000 immb_3 100001 Rn_5 Rd_5)
+{
+    int esize = 8 << highest_bit_set_c(bits_c(immh, 2, 0), 32);
+    int datasize = 64;
+    int part = Q;
+    int elements = datasize / esize;
+
+    int shift = (2 * esize) - ((immh << 3) | immb);
+
+    o128 operand = V(Rn);
+    o128 result = vector_zero;
+
+    loop (elements) e
+    {
+        o64 element = shift_right_check(elm operand e (2 * esize), shift, 2 * esize, true);
+        elm result e esize element;
+    }
+
+    VPart(Rd, part, datasize, result);
+}
+
+/*
     REV64 vector
 */
 fl_instruction 32 rev64_vector(0 Q_1 001110 size_2 100000000010 Rn_5 Rd_5)
@@ -1001,6 +1026,31 @@ fl_instruction 32 zip(0 Q_1 001110 size_2 0 Rm_5 0 op_1 1110 Rn_5 Rd_5)
 }
 
 /*
+    TRN1
+    TRN2    
+*/
+fl_instruction 32 trn(0	Q_1 001110 size_2 0 Rm_5 0 op_1 1010 Rn_5 Rd_5)
+{
+    int esize = 8 << size;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+    int part = op;
+    int pairs = elements / 2;
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+    o128 result = vector_zero;
+
+    loop (pairs) p
+    {
+        elm result (2*p+0) esize (elm operand1 (2*p+part) esize);
+        elm result (2*p+1) esize (elm operand2 (2*p+part) esize);
+    }
+
+    V(Rd, result);
+}
+
+/*
     TBL
 */
 fl_instruction 32 tbl(0 Q_1 001110000 Rm_5 0 len_2 000 Rn_5 Rd_5)
@@ -1198,6 +1248,31 @@ fl_instruction 32 fneg_scalar(00011110 ftype_2 100001010000 Rn_5 Rd_5)
 }
 
 /*
+    FNEG vector
+*/
+fl_instruction 32 fneg_vector(0 Q_1 1011101 sz_1 100000111110 Rn_5 Rd_5)
+{
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o128 operand = V(Rn);
+    o128 result = vector_zero;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    loop (elements) e
+    {
+        o64 element = elm operand e esize;
+        o64 working = FPNeg(element, fpcr_state, esize);
+
+        elm result e esize working;
+    }
+
+    V(Rd, result);
+}
+
+/*
     FSQRT scalar
 */
 fl_instruction 32 fsqrt_scalar(00011110 ftype_2 100001110000 Rn_5 Rd_5)
@@ -1236,6 +1311,31 @@ fl_instruction 32 fsqrt_vector(0 Q_1 1011101 sz_1 100001111110 Rn_5 Rd_5)
     {
         o64 element = elm operand e esize;
         o64 working = FPSqrt(element, fpcr_state, esize);
+
+        elm result e esize working;
+    }
+
+    V(Rd, result);
+}
+
+/*
+    FRECPE vector
+*/
+fl_instruction 32 frecpe_vector(0 Q_1 0011101 sz_1 100001110110 Rn_5 Rd_5)
+{
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o128 operand = V(Rn);
+    o128 result = vector_zero;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    loop (elements) e
+    {
+        o64 element = elm operand e esize;
+        o64 working = FPRecipEstimate(element, fpcr_state, esize);
 
         elm result e esize working;
     }
@@ -1579,6 +1679,32 @@ fl_instruction 32 frsqrts_vector(0 Q_1 0011101 sz_1 1 Rm_5 111111 Rn_5 Rd_5)
 }
 
 /*
+    FRECPS vector
+*/
+fl_instruction 32 frecps_vector(0 Q_1 0011100 sz_1 1 Rm_5 111111 Rn_5 Rd_5)
+{
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+    o128 result = vector_zero;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    loop (elements) e
+    {
+        o64 element1 = elm operand1 e esize;
+        o64 element2 = elm operand2 e esize;
+
+        elm result e esize FPRecipStepFused(element1, element2, fpcr_state, esize);
+    }
+
+    V(Rd, result);
+}
+
+/*
     FMUL scalar element
 */
 fl_instruction 32 fmul_scalar_by_element(010111111 sz_1 L_1 M_1 Rm_4 1001 H_1 0 Rn_5 Rd_5)
@@ -1806,4 +1932,25 @@ fl_instruction 32 frintm_scalar(00011110 ftype_2 100101010000 Rn_5 Rd_5)
 fl_instruction 32 fcvtp_scalar_integer(sf_1 0011110 ftype_2 10100 U_1 000000 Rn_5 Rd_5)
 {
     convert_to_int(sf, ftype, Rd, Rn, external FPRounding_POSINF, U, 0);
+}
+
+/*
+    FADDP scalar
+*/
+fl_instruction 32 faddp_scalar(011111100 sz_1 110000110110 Rn_5 Rd_5)
+{
+    int esize = 32 << sz;
+    int datasize = esize * 2;
+
+    o128 operand = V(Rn);
+    o128 result = vector_zero;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    o64 bottom = elm operand 0 esize;
+    o64 top = elm operand 1 esize;
+
+    elm result 0 esize FPAdd(bottom, top, fpcr_state, esize);
+
+    V(Rd, result);
 }

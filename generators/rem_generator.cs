@@ -161,6 +161,17 @@ namespace rem_frontend_generator.generators
                     case ">": return "ir_compare_greater_unsigned";
                     case "cgt": return "ir_compare_greater_signed";
                     case "cgte": return "ir_compare_greater_equal_signed";
+                    case "fadd": return "ir_floating_point_add"; 
+                    case "fsub": return "ir_floating_point_subtract"; 
+                    case "fmul": return "ir_floating_point_multiply"; 
+                    case "fdiv": return "ir_floating_point_divide"; 
+                    case "fmax": return "ir_floating_point_select_max";
+                    case "fmin": return "ir_floating_point_select_min";
+                    case "fclt": return "ir_floating_point_compare_less";
+                    case "feq": return "ir_floating_point_compare_equal";
+                    case "fcgt": return "ir_floating_point_compare_greater";
+                    case "fcgte": return "ir_floating_point_compare_greater_equal";
+                    case "fsqrt": return "ir_floating_point_square_root";
                     default: throw new Exception();
                 }
             }
@@ -174,6 +185,20 @@ namespace rem_frontend_generator.generators
                     case "clte": is_signed = true; return "<=";
                     case "cgte": is_signed = true; return ">=";
                     case "sdiv": is_signed = true; return "/";
+
+                    case "fadd": 
+                    case "fsub":
+                    case "fmul": 
+                    case "fdiv": 
+                    case "fmin":
+                    case "fmax":
+                    case "feq":
+                    case "fneq":
+                    case "fclt":
+                    case "fcgte":
+                    case "fcgt": 
+                    case "fsqrt":
+                        return "undefined";
 
                     default:
                         return name;
@@ -207,6 +232,11 @@ namespace rem_frontend_generator.generators
                 throw new Exception();
 
             return $"copy_new_raw_size({get_default_argument(interpreted)}, {source}, {get_explicit_rem_type(type)})";
+        }
+
+        string bitwise_to_float(string source, variable_type type, bool interpreted)
+        {
+            return $"get_float<{get_rem_type(type, interpreted)}>({source})";
         }
 
         string generate_object(i_ast_object data, bool interpreted, bool is_command = false)
@@ -343,6 +373,11 @@ namespace rem_frontend_generator.generators
                     {
                         string raw_operation = get_operation(uo.operation, false, out bool is_signed);
 
+                        if (raw_operation == "undefined")
+                        {
+                            return "undefined_value()";
+                        }
+
                         if (is_signed)
                         {
                             raw_operation = sign_compile_time(raw_operation);
@@ -390,6 +425,10 @@ namespace rem_frontend_generator.generators
                         else if (raw_operation == "umulh")
                         {
                             result = $"multiply_hi({left},{right}, false)";
+                        }
+                        else  if (raw_operation == "undefined")
+                        {
+                            result = "undefined_value()";
                         }
                         else
                         {
@@ -857,6 +896,32 @@ uint64_t convert_to_float(uint64_t source, bool is_signed)
     return *(uint64_t*)&temp;
 }
 
+template <typename T>
+double get_float(uint64_t source)
+{
+	switch (sizeof(T))
+	{
+		case 4: return convert<float, uint32_t>(source);
+		case 8: return convert<double, uint64_t>(source);
+		default: throw_error();
+	}
+}
+
+template <typename T>
+uint64_t get_int(double source)
+{
+    switch (sizeof(T))
+    {
+        case 4: return convert<uint32_t, float>(source);
+        case 8: return convert<uint64_t, double>(source);
+    }
+}
+
+static uint64_t undefined_value()
+{
+    throw_error();
+}
+
 ");
             cpp_file = new StringBuilder(@"#include ""aarch64_impl.h""
 #include ""string.h""
@@ -917,6 +982,8 @@ static ir_operand copy_new_raw_size(ssa_emit_context* ctx, ir_operand source, ui
 	{
 		if (new_size >= ir_operand::get_raw_size(&source))
 		{
+			source = ir_operand::copy_new_raw_size(source, new_size);
+
 			return source;
 		} 
 		else

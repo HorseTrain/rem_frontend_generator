@@ -547,116 +547,484 @@ void fcm_vector(int Rd, int Rn, int Rm, int mode, int Q, int sz)
     V(Rd, result);
 }
 
+o64 bits_r(o64 operand, int top, int bottom)
+{
+    top = top + 1;
+    int size = top - bottom;
+    int mask = (1 << size) - 1;
+
+    return (operand >> bottom) & mask;
+}
+
+o64 infinity(int sign,int N)
+{
+    o64 result = sign << (N - 1);
+
+    if (N == 32)
+    {
+        result = result | (0b11111111 << 23);
+    }
+    else if (N == 64)
+    {
+        result = result | (0b11111111111 << 52);
+    }
+    else
+    {
+        undefined();
+    }
+
+    return result;
+}
+
+o64 float_is_nan(o64 operand, int N)
+{
+    o8 result = 0;
+
+    o64 exp;
+    o64 frac;
+
+    if (N == 32)
+    {
+        exp = bits_r(operand, 30, 23);
+        frac = bits_r(operand, 22, 0);
+
+        if (exp == 0b11111111 && frac != 0)
+        {
+            set result 1;
+        }
+    }
+    else if (N == 64)
+    {
+        exp = bits_r(operand, 62, 52);
+        frac = bits_r(operand ,51, 0);
+
+        if (exp == 0b11111111111 && frac != 0)
+        {
+            set result 1;
+        }
+    }
+    else
+    {
+        undefined();
+    }
+
+    return result;
+}
+
+o64 float_imm(o64 source, int N)
+{
+    if (N == 32)
+    {
+        return to_float o32 source;
+    }
+    else if (N == 64)
+    {
+        return to_float o64 source;
+    }
+    else
+    {
+        undefined();
+    }
+}
+
+F create_fixed_from_fbits<F>(int fbits, int N)
+{
+    int working;
+
+    if (fbits == 64)
+    {
+        return ((F)float_imm(1 << 63, N)) fmul ((F)float_imm(2, N));
+    }
+    else if (fbits > 64)
+    {
+        undefined();
+    }
+
+    return float_imm(1 << fbits, N);
+}
+
 //soft binary
 o64 FPAdd(o64 operand1, o64 operand2, o64 FPCR, int N)
 {
+    if (use_fast_float() && N != 16)
+    {
+        o_type F = switch N {case 32 : o32, case 64 : o64 };
+
+        return ((F)operand1) fadd ((F)operand2);
+    }
+    
     return call_float_binary(operand1, operand2, FPCR, N, external FPAdd_I); 
 }
 
 o64 FPSub(o64 operand1, o64 operand2, o64 FPCR, int N)
-{
+{   
+    if (use_fast_float() && N != 16)
+    {
+        o_type F = switch N {case 32 : o32, case 64 : o64 };
+
+        return ((F)operand1) fsub ((F)operand2);
+    }
+    
     return call_float_binary(operand1, operand2, FPCR, N, external FPSub_I); 
 }
 
 o64 FPMul(o64 operand1, o64 operand2, o64 FPCR, int N)
 {
+    if (use_fast_float() && N != 16)
+    {
+        o_type F = switch N {case 32 : o32, case 64 : o64 };
+
+        return ((F)operand1) fmul ((F)operand2);
+    }
+
     return call_float_binary(operand1, operand2, FPCR, N, external FPMul_I); 
 }
 
 o64 FPDiv(o64 operand1, o64 operand2, o64 FPCR, int N)
 {
+    if (use_fast_float() && N != 16)
+    {
+        o_type F = switch N {case 32 : o32, case 64 : o64 };
+
+        return ((F)operand1) fdiv ((F)operand2);
+    }
+
     return call_float_binary(operand1, operand2, FPCR, N, external FPDiv_I); 
 }
 
 o64 FPMax(o64 operand1, o64 operand2, o64 FPCR, int N)
 {
+    if (use_fast_float() && N != 16)
+    {
+        o_type F = switch N {case 32 : o32, case 64 : o64 };
+
+        return ((F)operand1) fmax ((F)operand2);
+    }
+
     return call_float_binary(operand1, operand2, FPCR, N, external FPMax_I); 
 }
 
 o64 FPMin(o64 operand1, o64 operand2, o64 FPCR, int N)
 {
+    if (use_fast_float() && N != 16)
+    {
+        o_type F = switch N {case 32 : o32, case 64 : o64 };
+
+        return ((F)operand1) fmin ((F)operand2);
+    }
+
     return call_float_binary(operand1, operand2, FPCR, N, external FPMin_I); 
 }
 
 o64 FPMaxNum(o64 operand1, o64 operand2, o64 FPCR, int N)
 {
+    if (use_fast_float() && N != 16)
+    {
+        o64 type_1_nan = float_is_nan(operand1, N);
+        o64 type_2_nan = float_is_nan(operand2, N);
+
+        if (type_1_nan && !type_2_nan)
+        {
+            set operand1 infinity(1, N);
+        }
+        else if (!type_1_nan && type_2_nan)
+        {
+            set operand2 infinity(1, N);
+        }
+
+        o_type F = switch N {case 32 : o32, case 64 : o64 };
+
+        return ((F)operand1) fmax ((F)operand2);
+    }
+
     return call_float_binary(operand1, operand2, FPCR, N, external FPMaxNum_I); 
 }
 
 o64 FPMinNum(o64 operand1, o64 operand2, o64 FPCR, int N)
 {
+    if (use_fast_float() && N != 16)
+    {
+        o64 type_1_nan = float_is_nan(operand1, N);
+        o64 type_2_nan = float_is_nan(operand2, N);
+
+        if (type_1_nan && !type_2_nan)
+        {
+            set operand1 infinity(0, N);
+        }
+        else if (!type_1_nan && type_2_nan)
+        {
+            set operand2 infinity(0, N);
+        }
+
+        o_type F = switch N {case 32 : o32, case 64 : o64 };
+
+        return ((F)operand1) fmin ((F)operand2);
+    }
+
     return call_float_binary(operand1, operand2, FPCR, N, external FPMinNum_I); 
 }
 
 o64 FPCompare(o64 operand1, o64 operand2, o64 FPCR, int N)
 {
+    if (use_fast_float() && N != 16)
+    {
+        o_type F = switch N {case 32 : o32, case 64 : o64 };
+
+        F o1 = operand1;
+        F o2 = operand2;
+
+        F result = 0;
+
+        o64 type_1_nan = float_is_nan(o1, N);
+        o64 type_2_nan = float_is_nan(o2, N);
+
+        if (type_1_nan | type_2_nan)
+        {
+            set result 0b0011;
+        }
+        else
+        {
+            if (o1 feq o2)
+            {
+                set result 0b0110;
+            }
+            else if (o1 fclt o2)
+            {
+                set result 0b1000;
+            }
+            else
+            {
+                set result 0b0010;
+            }
+        }
+
+        return result;
+    }
+
     return call_float_binary(operand1, operand2, FPCR, N, external FPCompare_I); 
 }
 
 o64 FPRSqrtStepFused(o64 operand1, o64 operand2, o64 FPCR, int N)
 {
+    if (use_fast_float() && N != 16)
+    {
+        o_type F = switch N {case 32 : o32, case 64 : o64 };
+
+        F o1 = operand1 ^ (1 << (N -1));
+        F o2 = operand2;
+
+        F three = float_imm(3, N);
+        F two = float_imm(2, N);
+
+        return (three fadd (o1 fmul o2)) fdiv two;
+    }
+
     return call_float_binary(operand1, operand2, FPCR, N, external FPRSqrtStepFused_I); 
+}
+
+o64 FPRecipStepFused(o64 operand1, o64 operand2, o64 FPCR, int N)
+{
+    if (use_fast_float() && N != 16)
+    {
+        o_type F = switch N {case 32 : o32, case 64 : o64 };
+
+        F o1 = operand1 ^ (1 << (N -1));
+        F o2 = operand2;
+
+        F two = float_imm(2, N);
+
+        return (two fadd (o1 fmul o2));
+    }
+
+    return call_float_binary(operand1, operand2, FPCR, N, external FPRecipStepFused_I); 
 }
 
 o64 FPCompareEQ(o64 operand1, o64 operand2, o64 FPCR, int N)
 {
+    if (use_fast_float() && N != 16)
+    {
+        o_type F = switch N {case 32 : o32, case 64 : o64 };
+
+        F o1 = operand1;
+        F o2 = operand2;
+
+        return o1 feq o2;
+    }
+
     return call_float_binary(operand1, operand2, FPCR, N, external  FPCompareEQ_I); 
 }
 
 o64 FPCompareGT(o64 operand1, o64 operand2, o64 FPCR, int N)
 {
+    if (use_fast_float() && N != 16)
+    {
+        o_type F = switch N {case 32 : o32, case 64 : o64 };
+
+        F o1 = operand1;
+        F o2 = operand2;
+
+        return o1 fcgt o2;
+    }
+
     return call_float_binary(operand1, operand2, FPCR, N, external  FPCompareGT_I); 
 }
 
 o64 FPCompareGE(o64 operand1, o64 operand2, o64 FPCR, int N)
 {
+    if (use_fast_float() && N != 16)
+    {
+        o_type F = switch N {case 32 : o32, case 64 : o64 };
+
+        F o1 = operand1;
+        F o2 = operand2;
+
+        return o1 fcgte o2;
+    }
+
     return call_float_binary(operand1, operand2, FPCR, N, external  FPCompareGE_I); 
 }
 
 //Unary
 o64 FPSqrt(o64 operand, o64 FPCR, int N)
 {
+    if (use_fast_float() && N != 16)
+    {
+        o_type F = switch N {case 32 : o32, case 64 : o64 };
+
+        return fsqrt (F)operand; 
+    }
+
     return call_float_unary(operand, FPCR, N, external FPSqrt_I); 
 }
 
 o64 FPNeg(o64 operand, o64 FPCR, int N)
 {
+    if (use_fast_float())
+    {
+        return operand ^ (1 << (N - 1));
+    }
+
     return call_float_unary(operand, FPCR, N, external FPNeg_I); 
 }
 
 o64 FPAbs(o64 operand, o64 FPCR, int N)
 {
+    if (use_fast_float() && N != 16)
+    {
+        o64 mask = (1 << (N - 1)) - 1;
+
+        return operand & mask;
+    }
+
     return call_float_unary(operand, FPCR, N, external FPAbs_I); 
 }
 
 o64 FPRSqrtEstimate(o64 operand, o64 FPCR, int N)
 {
+    if (use_fast_float() && N != 16)
+    {
+        o_type F = switch N {case 32 : o32, case 64 : o64 };
+
+        F one = float_imm(1, N);
+
+        return one fdiv (fsqrt (F)operand);
+    }
+
     return call_float_unary(operand, FPCR, N, external FPRSqrtEstimate_I); 
+}
+
+o64 FPRecipEstimate(o64 operand, o64 FPCR, int N)
+{
+    if (use_fast_float() && N != 16)
+    {
+        o_type F = switch N {case 32 : o32, case 64 : o64 };
+
+        F one = float_imm(1, N);
+
+        return one fdiv (F)operand;
+    }
+
+    return call_float_unary(operand, FPCR, N, external FPRecipEstimate_I); 
 }
 
 //Conversion
 o64 FixedToFP(o64 source, int fracbits, int is_unsigned, int to, int from)
 {
+    if (use_fast_float() && to != 16 && from != 16)
+    {
+        o_type F = switch to {case 32 : o32, case 64 : o64 };
+        o_type I = switch from {case 32 : o32, case 64 : o64 };
+
+        if (from == 32)
+        {
+            source = source & UINT32_MAX;
+        }
+
+        F power = create_fixed_from_fbits<F>(fracbits, to);
+        
+        F working_result;
+
+        if (is_unsigned)
+        {
+            working_result = to_float F (I)source;
+        }
+        else
+        {
+            working_result = to_float signed F (I)source;
+        }
+
+        return working_result fdiv power;
+    }
+
     return call(source, fracbits, is_unsigned, to, from, 0, external FixedToFP_I);
 }
 
 o64 FPToFixed(o64 source, int fracbits, int is_unsigned, int round, int to, int from) 
 {
+    if (use_fast_float() && to != 16 && from != 16)
+    {
+        o_type F = switch to {case 32 : o32, case 64 : o64 };
+        o_type I = switch from {case 32 : o32, case 64 : o64 };
+
+        //TODO
+    }
+
     return call(source, fracbits, is_unsigned, round, to, from, external FPToFixed_I);
 }
 
 o64 FPConvert(o64 source, int to, int from)
 {
+    if (use_fast_float() && to != 16 && from != 16)
+    {
+        //TODO
+    }
+
     return call(source, 0, 0, to, from, 0, external FPConvert_I);
 }
 
 o64 FPRoundInt(o64 source, o64 fpcr, int rounding, int N)
 {
+    if (use_fast_float() && N != 16)
+    {
+        //TODO
+    }
+
     return call(source, fpcr, rounding, N, 0, 0, external FPRoundInt_I);
 }
 
 //Accumilate
 o64 FPMulAdd(o64 addend, o64 element1, o64 element2, o64 fpcr, int N)
 {
+    if (use_fast_float())
+    {
+        o_type F = switch N {case 32 : o32, case 64 : o64 };
+
+        F o3 = addend;
+        F o1 = element1;
+        F o2 = element2;
+
+        return o3 fadd (o1 fmul o2);
+    }
+
     return call(addend, element1, element2, fpcr, N, 0, external FPMulAdd_I);
 }
