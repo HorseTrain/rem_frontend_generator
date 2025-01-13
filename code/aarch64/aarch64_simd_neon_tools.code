@@ -650,7 +650,10 @@ o64 FPAdd(o64 operand1, o64 operand2, o64 FPCR, int N)
     {
         o_type F = switch N {case 32 : o32, case 64 : o64 };
 
-        return ((F)operand1) fadd ((F)operand2);
+        F o1 = operand1;
+        F o2 = operand2;
+
+        return o1 fadd o2;
     }
     
     return call_float_binary(operand1, operand2, FPCR, N, external FPAdd_I); 
@@ -662,7 +665,10 @@ o64 FPSub(o64 operand1, o64 operand2, o64 FPCR, int N)
     {
         o_type F = switch N {case 32 : o32, case 64 : o64 };
 
-        return ((F)operand1) fsub ((F)operand2);
+        F o1 = operand1;
+        F o2 = operand2;
+
+        return o1 fsub o2;
     }
     
     return call_float_binary(operand1, operand2, FPCR, N, external FPSub_I); 
@@ -674,7 +680,10 @@ o64 FPMul(o64 operand1, o64 operand2, o64 FPCR, int N)
     {
         o_type F = switch N {case 32 : o32, case 64 : o64 };
 
-        return ((F)operand1) fmul ((F)operand2);
+        F o1 = operand1;
+        F o2 = operand2;
+
+        return o1 fmul o2;
     }
 
     return call_float_binary(operand1, operand2, FPCR, N, external FPMul_I); 
@@ -686,7 +695,10 @@ o64 FPDiv(o64 operand1, o64 operand2, o64 FPCR, int N)
     {
         o_type F = switch N {case 32 : o32, case 64 : o64 };
 
-        return ((F)operand1) fdiv ((F)operand2);
+        F o1 = operand1;
+        F o2 = operand2;
+
+        return o1 fdiv o2;
     }
 
     return call_float_binary(operand1, operand2, FPCR, N, external FPDiv_I); 
@@ -698,7 +710,10 @@ o64 FPMax(o64 operand1, o64 operand2, o64 FPCR, int N)
     {
         o_type F = switch N {case 32 : o32, case 64 : o64 };
 
-        return ((F)operand1) fmax ((F)operand2);
+        F o1 = operand1;
+        F o2 = operand2;
+
+        return o1 fmax o2;
     }
 
     return call_float_binary(operand1, operand2, FPCR, N, external FPMax_I); 
@@ -710,7 +725,10 @@ o64 FPMin(o64 operand1, o64 operand2, o64 FPCR, int N)
     {
         o_type F = switch N {case 32 : o32, case 64 : o64 };
 
-        return ((F)operand1) fmin ((F)operand2);
+        F o1 = operand1;
+        F o2 = operand2;
+
+        return o1 fmin o2;
     }
 
     return call_float_binary(operand1, operand2, FPCR, N, external FPMin_I); 
