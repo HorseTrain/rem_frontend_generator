@@ -30,6 +30,8 @@ void undefined_with(int value) external
 void undefined() external
 
 o64 call(o64 a0, o64 a1, o64 a2, o64 a3, o64 a4, o64 a5, int function) external
+R intrinsic_unary<R> (int instruction, R source) external
+R intrinsic_binary<R> (int instruction, R source_0, R source_1) external
 
 o64 _compare_and_swap(o64 physical_address, o64 expecting, o64 to_swap, int size)
 {

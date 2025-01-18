@@ -231,6 +231,16 @@ public interface IlanguageListener : IParseTreeListener {
 	/// <param name="context">The parse tree.</param>
 	void ExitExternalIdentifierExpression([NotNull] languageParser.ExternalIdentifierExpressionContext context);
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.internalIdentifierExpression"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterInternalIdentifierExpression([NotNull] languageParser.InternalIdentifierExpressionContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.internalIdentifierExpression"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitInternalIdentifierExpression([NotNull] languageParser.InternalIdentifierExpressionContext context);
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="languageParser.baseExpression"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>

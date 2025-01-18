@@ -62,14 +62,14 @@ fl_instruction 32 move_to_gp (0 Q_1 001110000 imm5_5 001 U_1 11 Rn_5 Rd_5)
     o_type S = switch esize { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64 };
     o_type R = switch datasize { case 32 : o32, case 64 : o64 };
 
-    R working_operand = elm operand index esize;
+    R result = elm operand index esize;
 
     if (!U)
     {
-        working_operand = extend R (S)working_operand;
+        result = extend R (S)result;
     }
 
-    X(Rd, working_operand);
+    X(Rd, result);
 }
 
 fl_instruction 32 ins_general (01001110000 imm5_5 000111 Rn_5 Rd_5)
@@ -213,19 +213,19 @@ fl_instruction 32 fmov_general(sf_1 0011110 ftype_2 10 rmode_1 11 opcode_1 00000
 
     if (int_to_float)
     {
-        o64 src = X(Rn);
+        o64 result = X(Rn);
 
         o_type O = switch size { case 32 : o32, case 64 : o64 };
 
-        VPart(Rd, part, size, (O)src);
+        VPart(Rd, part, size, (O)result);
     }
     else
     {
         o128 v = V(Rn);
 
-        o64 src = elm v part size;
+        o64 result = elm v part size;
 
-        X(Rd, src);
+        X(Rd, result);
     } 
 }
 
@@ -1450,6 +1450,7 @@ fl_instruction 32 fadd_vector(0 Q_1 0011100 sz_1 1 Rm_5 110101 Rn_5 Rd_5)
 
     o128 operand1 = V(Rn);
     o128 operand2 = V(Rm);
+
     o128 result = vector_zero;
 
     o64 fpcr_state = _sys(external fpcr);

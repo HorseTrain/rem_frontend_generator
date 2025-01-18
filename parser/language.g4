@@ -98,6 +98,10 @@ externalIdentifierExpression
     : 'external' identifierExpression
     ;
 
+internalIdentifierExpression
+    : 'internal' identifierExpression
+    ;
+
 baseExpression
     : identifierExpression
     | externalIdentifierExpression
