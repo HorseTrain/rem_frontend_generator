@@ -420,6 +420,18 @@ public partial class languageBaseListener : IlanguageListener {
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitVectorZero([NotNull] languageParser.VectorZeroContext context) { }
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.vectorOne"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterVectorOne([NotNull] languageParser.VectorOneContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.vectorOne"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitVectorOne([NotNull] languageParser.VectorOneContext context) { }
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="languageParser.expression"/>.
 	/// <para>The default implementation does nothing.</para>
 	/// </summary>
@@ -539,6 +551,30 @@ public partial class languageBaseListener : IlanguageListener {
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitVariableType([NotNull] languageParser.VariableTypeContext context) { }
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.typeParameters"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterTypeParameters([NotNull] languageParser.TypeParametersContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.typeParameters"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitTypeParameters([NotNull] languageParser.TypeParametersContext context) { }
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.functionType"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterFunctionType([NotNull] languageParser.FunctionTypeContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.functionType"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitFunctionType([NotNull] languageParser.FunctionTypeContext context) { }
 	/// <summary>
 	/// Enter a parse tree produced by <see cref="languageParser.functionDeclaration"/>.
 	/// <para>The default implementation does nothing.</para>

@@ -224,6 +224,12 @@ public interface IlanguageVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <return>The visitor result.</return>
 	Result VisitVectorZero([NotNull] languageParser.VectorZeroContext context);
 	/// <summary>
+	/// Visit a parse tree produced by <see cref="languageParser.vectorOne"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitVectorOne([NotNull] languageParser.VectorOneContext context);
+	/// <summary>
 	/// Visit a parse tree produced by <see cref="languageParser.expression"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
@@ -283,6 +289,18 @@ public interface IlanguageVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
 	Result VisitVariableType([NotNull] languageParser.VariableTypeContext context);
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="languageParser.typeParameters"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitTypeParameters([NotNull] languageParser.TypeParametersContext context);
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="languageParser.functionType"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitFunctionType([NotNull] languageParser.FunctionTypeContext context);
 	/// <summary>
 	/// Visit a parse tree produced by <see cref="languageParser.functionDeclaration"/>.
 	/// </summary>

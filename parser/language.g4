@@ -105,6 +105,7 @@ internalIdentifierExpression
 baseExpression
     : identifierExpression
     | externalIdentifierExpression
+    | internalIdentifierExpression
     | parenthesis
     | number
     | trueFalse
@@ -157,7 +158,7 @@ parenthesis
     ;
 
 genericImpl
-    : '<' identifier (',' identifier)* '>'
+    : '<' variableType (',' variableType)* '>'
     ;
 
 functionCall
@@ -166,6 +167,10 @@ functionCall
 
 vectorZero
     : 'vector_zero'
+    ;
+
+vectorOne
+    : 'vector_one'
     ;
 
 expression
@@ -177,6 +182,7 @@ expression
     | signExtend
     | elementExtract
     | vectorZero
+    | vectorOne
     | expression ('*' | '/' | 'sdiv' | 'umulh' | 'smulh' | '%' | 'fmul' | 'fdiv') expression
     | expression ('+' | '-' | 'fadd' | 'fsub') expression
     | expression ('<<' | '>>' | 'sar' | 'ror') expression
@@ -229,6 +235,16 @@ functionBody
 variableType
     : runtimeOperandType
     | compileTimeIntegerType
+    | functionType
+    ;
+
+typeParameters
+    : variableType (',' variableType)*
+    ;
+
+functionType
+    : 'void_function'
+    | '(' variableType '(' typeParameters? ')' ')'
     ;
 
 functionDeclaration

@@ -276,6 +276,18 @@ public partial class languageBaseListener : IlanguageListener {
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitExternalIdentifierExpression([NotNull] languageParser.ExternalIdentifierExpressionContext context) { }
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.internalIdentifierExpression"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterInternalIdentifierExpression([NotNull] languageParser.InternalIdentifierExpressionContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.internalIdentifierExpression"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitInternalIdentifierExpression([NotNull] languageParser.InternalIdentifierExpressionContext context) { }
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="languageParser.baseExpression"/>.
 	/// <para>The default implementation does nothing.</para>
 	/// </summary>
@@ -419,6 +431,18 @@ public partial class languageBaseListener : IlanguageListener {
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitExpression([NotNull] languageParser.ExpressionContext context) { }
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.encodingExtra"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterEncodingExtra([NotNull] languageParser.EncodingExtraContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.encodingExtra"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitEncodingExtra([NotNull] languageParser.EncodingExtraContext context) { }
 	/// <summary>
 	/// Enter a parse tree produced by <see cref="languageParser.fixedLengthInstructionOperand"/>.
 	/// <para>The default implementation does nothing.</para>

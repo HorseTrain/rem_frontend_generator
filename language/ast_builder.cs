@@ -59,6 +59,31 @@ namespace rem_frontend_generator.language
             return new unary_operation("()", Visit(context.expression()) as expression);
         }
 
+        public override i_ast_object VisitFunctionType([NotNull] FunctionTypeContext context)
+        {
+            function_reference_type result = new function_reference_type();
+
+            if (context.GetText() == "void_function")
+            {
+                return result;
+            }
+
+            result.return_type = Visit(context.variableType()) as variable_type;
+            result.parameter_types = new List<variable_type>();
+
+            if (context.typeParameters() != null)
+            {
+                var parameters = context.typeParameters();
+
+                foreach (var i in parameters.variableType())
+                {
+                    result.parameter_types.Add(Visit(i) as variable_type);
+                }
+            }
+
+            return result;
+        }
+
         ulong create_mask(int size)
         {
             if (size >= 64)
@@ -108,7 +133,12 @@ namespace rem_frontend_generator.language
 
         public override i_ast_object VisitVectorZero([NotNull] VectorZeroContext context)
         {
-            return new vector_zero(o128);
+            return new vector_default(o128, vector_default_type.zeros);
+        }
+
+        public override i_ast_object VisitVectorOne([NotNull] VectorOneContext context)
+        {
+            return new vector_default(o128, vector_default_type.ones);
         }
 
         public override i_ast_object VisitElementExtract([NotNull] ElementExtractContext context)
@@ -300,6 +330,17 @@ namespace rem_frontend_generator.language
             return result;
         }
 
+        public override i_ast_object VisitInternalIdentifierExpression([NotNull] InternalIdentifierExpressionContext context)
+        {
+            identifier result = new identifier();
+
+            result.data = context.identifierExpression().GetText();
+            result.is_internal = true;
+            result.external_type = nonvoid_type;
+
+            return result;
+        }
+
         public override i_ast_object VisitTrueFalse([NotNull] TrueFalseContext context)
         {
             if (context.GetText() == "true")
@@ -339,7 +380,7 @@ namespace rem_frontend_generator.language
 
             if (generics != null)
             {
-                foreach (var i in generics.identifier())
+                foreach (var i in generics.variableType())
                 {
                     variable_type generic_type = get_runtime_type(i.GetText()) as variable_type;
 
@@ -356,27 +397,65 @@ namespace rem_frontend_generator.language
 
             string function_key = source_file.get_function_key(result);
 
-            function function_reference = top_scope().get_scoped_object(function_key) as function;
+            function explicit_function_reference;
+            List<variable_type> parameter_types;
 
-            if (function_reference == null)
+            try 
             {
-                throw new Exception();
+                explicit_function_reference = top_scope().get_scoped_object(function_key) as function;
+
+                parameter_types = new List<variable_type>();
+                result.return_type = explicit_function_reference.return_type;
+            }
+            catch (Exception e)
+            {
+                i_ast_object dynamic_function_reference = top_scope().get_scoped_object(result.function_name);
+                explicit_function_reference = null;
+
+                switch (dynamic_function_reference)
+                {
+                    case variable_declaration vd:
+                    {
+                        if (vd.type is not function_reference_type fre)
+                        {
+                            throw new Exception();
+                        }
+
+                        result.is_reference_call = true;
+                        parameter_types = fre.parameter_types;
+                        result.return_type = fre.return_type;
+                    }; break;
+
+                    default: throw new Exception();
+                }
             }
 
-            result.function_reference = function_reference;
+            if (!result.is_reference_call)
+            {
+                if (explicit_function_reference == null)
+                {
+                    throw new Exception();
+                }
+
+                result.function_reference = explicit_function_reference;
+
+                for (int i = 0; i < result.function_reference.parameters.Count; ++i)
+                {
+                    parameter_types.Add(result.function_reference.parameters[i].type);
+                }
+            }
 
             Dictionary<string, variable_type> g_map = new Dictionary<string, variable_type>();
             
             for (int i = 0; i < result.generics.Count; ++i)
             {
-                g_map.Add(function_reference.generics[i].name, result.generics[i]);
+                g_map.Add(explicit_function_reference.generics[i].name, result.generics[i]);
             }
 
             for (int i = 0; i < result.function_arguments.Count; ++i)
             {
                 expression working = result.function_arguments[i];
-                variable_declaration parameter = result.function_reference.parameters[i];
-                variable_type parameter_type = parameter.type;
+                variable_type parameter_type = parameter_types[i];
 
                 if (!parameter_type.is_runtime())
                     continue;
@@ -393,6 +472,8 @@ namespace rem_frontend_generator.language
 
                 result.function_arguments[i] = new cast(parameter_type, working);
             }
+
+            result.parameter_types = parameter_types;
 
             return result;
         }
@@ -602,7 +683,7 @@ namespace rem_frontend_generator.language
 
             if (generic_data != null)
             {
-                foreach (var i in generic_data.identifier())
+                foreach (var i in generic_data.variableType())
                 {
                     string generic_name = i.GetText();
 

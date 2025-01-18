@@ -231,6 +231,16 @@ public interface IlanguageListener : IParseTreeListener {
 	/// <param name="context">The parse tree.</param>
 	void ExitExternalIdentifierExpression([NotNull] languageParser.ExternalIdentifierExpressionContext context);
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.internalIdentifierExpression"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterInternalIdentifierExpression([NotNull] languageParser.InternalIdentifierExpressionContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.internalIdentifierExpression"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitInternalIdentifierExpression([NotNull] languageParser.InternalIdentifierExpressionContext context);
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="languageParser.baseExpression"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
@@ -350,6 +360,16 @@ public interface IlanguageListener : IParseTreeListener {
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	void ExitExpression([NotNull] languageParser.ExpressionContext context);
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.encodingExtra"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterEncodingExtra([NotNull] languageParser.EncodingExtraContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.encodingExtra"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitEncodingExtra([NotNull] languageParser.EncodingExtraContext context);
 	/// <summary>
 	/// Enter a parse tree produced by <see cref="languageParser.fixedLengthInstructionOperand"/>.
 	/// </summary>

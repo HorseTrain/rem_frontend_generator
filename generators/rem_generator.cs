@@ -504,6 +504,20 @@ namespace rem_frontend_generator.generators
                 {
                     string result = get_name_with_interpreted(fc.function_name, interpreted);
 
+                    if (fc.is_reference_call)
+                    {
+                        string cast = $"({get_rem_type(fc.return_type, interpreted)}(*)(void*";
+
+                        foreach (var i in fc.parameter_types)
+                        {
+                            cast += $",{get_rem_type(i, interpreted)}";
+                        }
+
+                        cast += "))";
+
+                        result = $"({cast}{fc.function_name})";
+                    }
+
                     if (interpreted)
                     {
                         if (fc.generics.Count != 0)
@@ -546,9 +560,9 @@ namespace rem_frontend_generator.generators
                     {
                         string raw_argument = generate_object(a, interpreted, false);
 
-                        if (!a.is_runtime() && fc.function_reference.parameters[argument_index].type.is_runtime() && !interpreted)
+                        if (!a.is_runtime() && fc.parameter_types[argument_index].is_runtime() && !interpreted)
                         {
-                            raw_argument = convert_to_runtime(raw_argument, fc.function_reference.parameters[argument_index].type, interpreted);
+                            raw_argument = convert_to_runtime(raw_argument, fc.parameter_types[argument_index], interpreted);
                         }
 
                         result += $",{raw_argument}";
@@ -710,15 +724,25 @@ namespace rem_frontend_generator.generators
                     }
                 }
 
-                case vector_zero:
+                case vector_default vd:
                 {
                     if (interpreted)
                     {
-                        return "0";
+                        switch (vd.default_type)
+                        {
+                            case vector_default_type.zeros: return "0";
+                            case vector_default_type.ones: return "uint128_t(-1, -1)";
+                            default: throw new Exception();
+                        }
                     }
                     else
                     {
-                        return $"ssa_emit_context::vector_zero({get_default_argument(interpreted)})";
+                        switch (vd.default_type)
+                        {
+                            case vector_default_type.zeros: return $"ssa_emit_context::vector_zero({get_default_argument(interpreted)})";
+                            case vector_default_type.ones: return $"ssa_emit_context::vector_one({get_default_argument(interpreted)})";
+                            default: throw new Exception();
+                        }
                     }
                 }; 
 
@@ -727,6 +751,21 @@ namespace rem_frontend_generator.generators
                     if (id.is_external)
                     {
                         return $"(uint64_t){id.data}";
+                    }
+                    else if (id.is_internal)
+                    {
+                        string result = $"(uint64_t){id.data}";
+
+                        if (interpreted)
+                        {
+                            result += "_interpreter";
+                        }
+                        else
+                        {
+                            result += "_jit";
+                        }
+
+                        return result;
                     }
 
                     throw new Exception();
@@ -1009,6 +1048,36 @@ static ir_operand copy_new_raw_size(ssa_emit_context* ctx, ir_operand source, ui
 
 		return result;
 	}
+}
+
+template <typename R>
+R intrinsic_unary_interpreter(interpreter_data* ctx, uint64_t instruction, R source)
+{
+
+}
+
+template <typename R>
+R intrinsic_binary_interpreter(interpreter_data* ctx, uint64_t instruction, R source_0, R source_1)
+{
+
+}
+
+template <typename R>
+R intrinsic_binary_imm_interpreter(interpreter_data* ctx, uint64_t instruction, R source_0, uint64_t source_1)
+{
+
+}
+
+template <typename R>
+R intrinsic_ternary_interpreter(interpreter_data* ctx, uint64_t instruction, R source_0, R source_1, R source_2)
+{
+
+}
+
+template <typename R>
+R intrinsic_ternary_imm_interpreter(interpreter_data* ctx, uint64_t instruction, R source_0, R source_1, uint64_t source_2)
+{
+
 }
 
 ");

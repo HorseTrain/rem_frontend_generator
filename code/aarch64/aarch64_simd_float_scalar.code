@@ -1,0 +1,207 @@
+/*
+    BINARY SCALAR OPERATIONS
+*/
+
+/*
+    FADD scalar
+*/
+fl_instruction 32 fadd_scalar(00011110 ftype_2 1 Rm_5 001010 Rn_5 Rd_5)
+{
+    if (use_fast_float() && use_x86_sse() && ftype != 0b11)
+    {
+        intrinsic_float_binary_scalar(Rd, Rn, Rm, ftype, -1, external x86_addss, external x86_addsd);
+
+        return;
+    }
+
+    float_binary_scalar(Rd, Rn, Rm, ftype, internal FPAdd);
+}
+
+/*
+    FSUB scalar
+*/
+fl_instruction 32 fsub_scalar(00011110 ftype_2 1 Rm_5 001110 Rn_5 Rd_5)
+{
+    if (use_fast_float() && use_x86_sse() && ftype != 0b11)
+    {
+        intrinsic_float_binary_scalar(Rd, Rn, Rm, ftype, -1, external x86_subss, external x86_subsd);
+
+        return;
+    }
+
+    float_binary_scalar(Rd, Rn, Rm, ftype, internal FPSub);
+}
+
+/*
+    FMUL scalar
+*/
+fl_instruction 32 fmul_scalar(00011110 ftype_2 1 Rm_5 000010 Rn_5 Rd_5)
+{
+    if (use_fast_float() && use_x86_sse() && ftype != 0b11)
+    {
+        intrinsic_float_binary_scalar(Rd, Rn, Rm, ftype, -1, external x86_mulss, external x86_mulsd);
+
+        return;
+    }
+
+    float_binary_scalar(Rd, Rn, Rm, ftype, internal FPMul);
+}
+
+/*
+    FDIV scalar
+*/
+fl_instruction 32 fdiv_scalar(00011110 ftype_2 1 Rm_5 000110 Rn_5 Rd_5)
+{
+    if (use_fast_float() && use_x86_sse() && ftype != 0b11)
+    {
+        intrinsic_float_binary_scalar(Rd, Rn, Rm, ftype, -1, external x86_divss, external x86_divsd);
+
+        return;
+    }
+
+    float_binary_scalar(Rd, Rn, Rm, ftype, internal FPDiv);
+}
+
+/*
+    FMAX scalar
+*/
+fl_instruction 32 fmax_scalar(00011110 ftype_2 1 Rm_5 010010 Rn_5 Rd_5)
+{
+    if (use_fast_float() && use_x86_sse() && ftype != 0b11)
+    {
+        intrinsic_float_binary_scalar(Rd, Rn, Rm, ftype, -1, external x86_maxss, external x86_maxsd);
+
+        return;
+    }
+
+    float_binary_scalar(Rd, Rn, Rm, ftype, internal FPMax);
+}
+
+/*
+    FMIN scalar
+*/
+fl_instruction 32 fmin_scalar(00011110 ftype_2 1 Rm_5 010110 Rn_5 Rd_5)
+{
+    if (use_fast_float() && use_x86_sse() && ftype != 0b11)
+    {
+        intrinsic_float_binary_scalar(Rd, Rn, Rm, ftype, -1, external x86_minss, external x86_minsd);
+
+        return;
+    }
+
+    float_binary_scalar(Rd, Rn, Rm, ftype, internal FPMin);
+}
+
+/*
+    FMAXNM scalar
+*/
+fl_instruction 32 fmaxnm_scalar(00011110 ftype_2 1 Rm_5 011010 Rn_5 Rd_5)
+{
+    float_binary_scalar(Rd, Rn, Rm, ftype, internal FPMaxNum);
+}
+
+/*
+    FMINNM scalar
+*/
+fl_instruction 32 fminnm_scalar(00011110 ftype_2 1 Rm_5 011110 Rn_5 Rd_5)
+{
+    float_binary_scalar(Rd, Rn, Rm, ftype, internal FPMinNum);
+}
+
+/*
+    FNMUL scalar
+*/
+fl_instruction 32 fnmul_scalar(00011110 ftype_2 1 Rm_5 100010 Rn_5 Rd_5)
+{
+    float_binary_scalar(Rd, Rn, Rm, ftype, internal FPNMul);
+}
+
+/*
+    UNARY SCALAR OPERATIONS
+*/
+
+/*
+    FABS scalar
+*/
+fl_instruction 32 fabs_scalar(00011110 ftype_2 100000110000 Rn_5 Rd_5)
+{
+    float_unary_scalar(Rd, Rn, ftype, internal FPAbs);
+}
+
+/*
+    FNEG scalar
+*/
+fl_instruction 32 fneg_scalar(00011110 ftype_2 100001010000 Rn_5 Rd_5)
+{
+    float_unary_scalar(Rd, Rn, ftype, internal FPNeg);
+}
+
+/*
+    FNEG vector
+*/
+fl_instruction 32 fneg_vector(0 Q_1 1011101 sz_1 100000111110 Rn_5 Rd_5)
+{
+    float_unary_vector(Rd, Rn, Q, sz, internal FPNeg);
+}
+
+/*
+    FSQRT scalar
+*/
+fl_instruction 32 fsqrt_scalar(00011110 ftype_2 100001110000 Rn_5 Rd_5)
+{
+    float_unary_scalar(Rd, Rn, ftype, internal FPSqrt);
+}
+
+/*
+    FSQRT vector
+*/
+fl_instruction 32 fsqrt_vector(0 Q_1 1011101 sz_1 100001111110 Rn_5 Rd_5)
+{
+    float_unary_vector(Rd, Rn, Q, sz, internal FPSqrt);
+}
+
+/*
+    FRECPE vector
+*/
+fl_instruction 32 frecpe_vector(0 Q_1 0011101 sz_1 100001110110 Rn_5 Rd_5)
+{
+    float_unary_vector(Rd, Rn, Q, sz, internal FPRecipEstimate);
+}
+
+/*
+    FRSQRTE scalar
+*/
+fl_instruction 32 frsqrte_scalar(011111101 sz_1 100001110110 Rn_5 Rd_5)
+{
+    int esize = 32 << sz;
+
+    o64 operand = V(Rn);
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    o64 result = FPRSqrtEstimate(operand, fpcr_state, esize);
+
+    if (esize == 32)
+    {
+        result = result & UINT32_MAX;
+    }
+
+    V(Rd, result);
+}
+
+
+/*
+    MISC OPERATIONS
+*/
+
+/*
+    FMOV imm
+*/
+fl_instruction 32 fmov_scalar_immediate(00011110 ftype_2 1 imm8_8 10000000 Rd_5)
+{
+    int fltsize = get_flt_size(ftype);
+
+    o64 imm = vfp_expand_imm(imm8, fltsize);
+
+    V(Rd, imm);
+}

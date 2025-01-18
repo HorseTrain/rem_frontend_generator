@@ -689,6 +689,13 @@ o64 FPMul(o64 operand1, o64 operand2, o64 FPCR, int N)
     return call_float_binary(operand1, operand2, FPCR, N, external FPMul_I); 
 }
 
+o64 FPNMul(o64 operand1, o64 operand2, o64 FPCR, int N)
+{
+    o64 result = FPMul(operand1, operand2, FPCR, N);
+
+    return FPNeg(result, FPCR, N);
+}
+
 o64 FPDiv(o64 operand1, o64 operand2, o64 FPCR, int N)
 {
     if (use_fast_float() && N != 16)
@@ -1045,4 +1052,239 @@ o64 FPMulAdd(o64 addend, o64 element1, o64 element2, o64 fpcr, int N)
     }
 
     return call(addend, element1, element2, fpcr, N, 0, external FPMulAdd_I);
+}
+
+//Helpers
+
+void float_unary_scalar(int Rd, int Rn, int fsize, (o64 (o64, o64, int)) float_function)
+{
+    o64 operand = V(Rn);
+
+    int N = get_flt_size(fsize);
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    o64 element_result = float_function(operand, fpcr_state, N);
+
+    o128 vector_result = vector_zero;
+    elm vector_result 0 N element_result;
+
+    V(Rd, vector_result);
+}
+
+void float_unary_vector(int Rd, int Rn, int Q, int sz, (o64 (o64, o64, int)) float_function)
+{
+    o128 operand = V(Rn);
+    o128 result = vector_zero;
+
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    loop (elements) e
+    {
+        o64 working = elm operand e esize;
+
+        o64 element_result = float_function(working, fpcr_state, esize);
+
+        elm result e esize element_result;
+    }
+
+    V(Rd, result);
+}
+
+void float_binary_scalar(int Rd, int Rn, int Rm, int fsize, (o64 (o64, o64, o64, int)) float_function)
+{
+    o64 operand1 = V(Rn);
+    o64 operand2 = V(Rm);
+
+    int N = get_flt_size(fsize);
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    o64 element_result = float_function(operand1, operand2, fpcr_state, N);
+
+    o128 vector_result = vector_zero;
+    elm vector_result 0 N element_result;
+
+    V(Rd, vector_result);
+}
+
+void float_binary_vector(int Rd, int Rn, int Rm, int Q, int sz, (o64 (o64, o64, o64, int)) float_function)
+{
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+
+    o128 result = vector_zero;
+
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    loop (elements) e
+    {
+        o64 element1 = elm operand1 e esize;
+        o64 element2 = elm operand2 e esize;
+
+        elm result e esize float_function(element1, element2, fpcr_state, esize);
+    }
+
+    V(Rd, result);
+}
+
+void frint(int ftype,int Rn, int Rd, int rounding)
+{
+    o128 operand1 = V(Rn);
+    o128 result = vector_zero;
+
+    int esize = get_flt_size(ftype);
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    o64 working = FPRoundInt(operand1, fpcr_state, rounding, esize);
+
+    elm result 0 esize working;
+
+    V(Rd, result);
+}
+
+void intrinsic_float_binary_vector(int Rd, int Rn, int Rm, int Q, int sz, int float_instruction, int double_instruction)
+{
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+    o128 result;
+
+    if (sz)
+    {
+        result = intrinsic_binary<o128>(double_instruction, operand1, operand2);
+    }
+    else
+    {
+        result = intrinsic_binary<o128>(float_instruction, operand1, operand2);
+    }
+
+    if (!Q)
+    {
+        elm result 1 64 (o64)0;
+    }
+
+    V(Rd, result);
+}
+
+void intrinsic_float_binary_scalar(int Rd, int Rn, int Rm, int fsize, int half_instruction, int float_instruction, int double_instruction)
+{
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+    o128 result;
+
+    int esize = get_flt_size(fsize);
+
+    if (esize == 64)
+    {
+        result = intrinsic_binary<o128>(double_instruction, operand1, operand2);
+    }
+    else if (esize == 32)
+    {
+        result = intrinsic_binary<o128>(float_instruction, operand1, operand2);
+
+        elm result 1 32 (o64)0;
+    }
+    else if (esize == 16)
+    {
+        result = intrinsic_binary<o128>(half_instruction, operand1, operand2);
+
+        elm result 1 16 (o64)0;
+    }
+    else
+    {
+        undefined();
+    }
+
+    elm result 1 64 (o64)0;
+
+    V(Rd, result);
+}
+
+void x86_sse_logic_vector(int Rd, int Rn, int Rm,int Q, int invert, int primary_instruction)
+{
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+
+    if (invert)
+    {
+        o128 one = vector_one;
+
+        operand2 = intrinsic_binary<o128>(external x86_xorps, operand2, one);
+    }
+
+    o128 result = intrinsic_binary<o128>(primary_instruction,operand1, operand2);
+
+    if (!Q)
+    {
+        elm result 1 64 (o64)0;
+    }
+
+    V(Rd, result);
+}
+
+o128 sse_copy_to_xmm_from_xmm_element(o128 source, int size, int index)
+{
+    if (size <= 16)
+    {
+        o64 source_element = elm source size index;
+
+        return sse_coppy_gp_across_lanes(source_element, size);
+    }
+
+    if (size == 32)
+    {
+        return intrinsic_ternary_imm<o128>(external x86_shufps, source, source, index | (index << 2) | (index << 4) | (index << 6));
+    }
+    else if (size == 64)
+    {
+        return intrinsic_ternary_imm<o128>(external x86_shufpd, source, source, index | (index << 1));
+    }
+    else
+    {
+        undefined();
+    }
+}
+
+o128 sse_coppy_gp_across_lanes(o64 source, int size)
+{
+    if (size == 8)
+    {
+        source = source & UINT8_MAX;
+
+        source = source | (source << 8) | (source << 16) | (source << 24);
+
+        size = 32;
+    }
+    else if (size == 16)
+    {   
+        source = source & UINT16_MAX;
+
+        source = source | (source << 16);
+
+        size = 32;
+    }
+
+    o128 working_element = source;
+
+    if (size == 32)
+    {
+        return intrinsic_ternary_imm<o128>(external x86_shufps, working_element, working_element, 0);
+    }
+    else if (size == 64)
+    {
+        return intrinsic_ternary_imm<o128>(external x86_shufpd, working_element, working_element, 0);
+    }
+    else
+    {
+        undefined();
+    }
 }

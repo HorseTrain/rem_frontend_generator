@@ -3,6 +3,7 @@ namespace rem_frontend_generator.language
     public class identifier : expression
     {
         public bool is_external             { get; set; }
+        public bool is_internal             { get; set; }
         public string data                  { get; set; }
         public variable_type external_type  { get; set; }
 
@@ -18,6 +19,11 @@ namespace rem_frontend_generator.language
 
         public override bool is_runtime()
         {
+            if (is_external || is_internal)
+            {
+                return false;
+            }
+
             return external_type.is_runtime();
         }
     }

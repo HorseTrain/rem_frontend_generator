@@ -351,6 +351,16 @@ public interface IlanguageListener : IParseTreeListener {
 	/// <param name="context">The parse tree.</param>
 	void ExitVectorZero([NotNull] languageParser.VectorZeroContext context);
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.vectorOne"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterVectorOne([NotNull] languageParser.VectorOneContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.vectorOne"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitVectorOne([NotNull] languageParser.VectorOneContext context);
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="languageParser.expression"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
@@ -450,6 +460,26 @@ public interface IlanguageListener : IParseTreeListener {
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	void ExitVariableType([NotNull] languageParser.VariableTypeContext context);
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.typeParameters"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterTypeParameters([NotNull] languageParser.TypeParametersContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.typeParameters"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitTypeParameters([NotNull] languageParser.TypeParametersContext context);
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="languageParser.functionType"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterFunctionType([NotNull] languageParser.FunctionTypeContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="languageParser.functionType"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitFunctionType([NotNull] languageParser.FunctionTypeContext context);
 	/// <summary>
 	/// Enter a parse tree produced by <see cref="languageParser.functionDeclaration"/>.
 	/// </summary>

@@ -1,0 +1,543 @@
+/*
+    BINARY VECTOR OPERATIONS
+*/
+
+/*
+    FADD Vector
+*/
+fl_instruction 32 fadd_vector(0 Q_1 0011100 sz_1 1 Rm_5 110101 Rn_5 Rd_5)
+{
+    if (use_fast_float() && use_x86_sse())
+    {
+        intrinsic_float_binary_vector(Rd, Rn, Rm, Q, sz, external x86_addps, external x86_addpd);
+
+        return;
+    }
+
+    float_binary_vector(Rd, Rn, Rm, Q, sz, internal FPAdd);
+}
+
+/*
+    FMUL Vector
+*/
+fl_instruction 32 fmul_vector(0 Q_1 1011100 sz_1 1 Rm_5 110111 Rn_5 Rd_5)
+{
+    if (use_fast_float() && use_x86_sse())
+    {
+        intrinsic_float_binary_vector(Rd, Rn, Rm, Q, sz, external x86_mulps, external x86_mulpd);
+
+        return;
+    }
+
+    float_binary_vector(Rd, Rn, Rm, Q, sz, internal FPMul);
+}
+
+/*
+    FSUB Vector
+*/
+fl_instruction 32 fsub_vector(0 Q_1 0011101 sz_1 1 Rm_5 110101 Rn_5 Rd_5)
+{
+    if (use_fast_float() && use_x86_sse())
+    {
+        intrinsic_float_binary_vector(Rd, Rn, Rm, Q, sz, external x86_subps, external x86_subpd);
+
+        return;
+    }
+
+    float_binary_vector(Rd, Rn, Rm, Q, sz, internal FPSub);
+}
+
+/*
+    FDIV Vector
+*/
+fl_instruction 32 fdiv_vector(0 Q_1 1011100 sz_1 1 Rm_5 111111 Rn_5 Rd_5)
+{
+    if (use_fast_float() && use_x86_sse())
+    {
+        intrinsic_float_binary_vector(Rd, Rn, Rm, Q, sz, external x86_divps, external x86_divpd);
+
+        return;
+    }
+
+    float_binary_vector(Rd, Rn, Rm, Q, sz, internal FPDiv);
+}
+
+/*
+    FMLA vector
+    FMLS vector
+*/
+fl_instruction 32 fmul_accumulate_vector(0 Q_1 001110 neg_1 sz_1 1 Rm_5 110011 Rn_5 Rd_5)
+{
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+    o128 operand3 = V(Rd);
+
+    o128 result;
+
+    //TODO use FMA if avalable
+    if (use_fast_float() && use_x86_sse())
+    {  
+        int add_instruction;
+        int subtract_instruction;
+        int multiply_instruction;
+
+        if (esize == 64)
+        {
+            add_instruction = external x86_addpd;
+            subtract_instruction = external x86_subpd;
+            multiply_instruction = external x86_mulpd;
+        }
+        else
+        {
+            add_instruction = external x86_addps;
+            subtract_instruction = external x86_subps;
+            multiply_instruction = external x86_mulps;
+        }
+
+        result = intrinsic_binary<o128>(multiply_instruction, operand1, operand2);
+
+        if (neg)
+        {
+            result = intrinsic_binary<o128>(subtract_instruction, operand3, result);
+        }
+        else
+        {
+            result = intrinsic_binary<o128>(add_instruction, operand3, result);
+        }
+
+        if (datasize == 64)
+        {
+            elm result 1 64 (o64)0;
+        }
+    }
+    else
+    {
+        result = vector_zero;
+
+        o64 fpcr_state = _sys(external fpcr);
+
+        loop (elements) e
+        {
+            o64 element1 = elm operand1 e esize;
+            o64 element2 = elm operand2 e esize;
+            o64 element3 = elm operand3 e esize;
+
+            if (neg)
+            {
+                element1 = FPNeg(element1, fpcr_state, esize);
+            }
+
+            elm result e esize FPMulAdd(element3, element1, element2, fpcr_state, esize);
+        }
+    }
+
+    V(Rd, result);
+}
+
+/*
+    FADDP vector
+*/
+fl_instruction 32 faddp_vector(0 Q_1 1011100 sz_1 1 Rm_5 110101 Rn_5 Rd_5)
+{
+    o128 lo = V(Rn);
+    o128 hi = V(Rm);
+
+    o128 result = vector_zero;
+
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    loop (elements) e
+    {
+        o64 element1 = get_from_concacted_vector(hi, lo, 2 * e, datasize / esize, esize);
+        o64 element2 = get_from_concacted_vector(hi, lo, (2 * e) + 1, datasize / esize, esize);
+
+        elm result e esize FPAdd(element1, element2, fpcr_state, esize);
+    }
+
+    V(Rd, result);
+}
+
+/*
+    FRSQRTE vector
+*/
+fl_instruction 32 frsqrte_vector(0 Q_1 1011101 sz_1 100001110110 Rn_5 Rd_5)
+{
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o128 operand = V(Rn);
+    o128 result = vector_zero;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    loop (elements) e
+    {
+        o64 element = elm operand e esize;
+
+        element = FPRSqrtEstimate(element, fpcr_state, esize);
+
+        elm result e esize element;
+    }
+
+    V(Rd, result);
+}
+
+/*
+    FRSQRTS vector
+*/
+fl_instruction 32 frsqrts_vector(0 Q_1 0011101 sz_1 1 Rm_5 111111 Rn_5 Rd_5)
+{
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+    o128 result = vector_zero;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    loop (elements) e
+    {
+        o64 element1 = elm operand1 e esize;
+        o64 element2 = elm operand2 e esize;
+
+        elm result e esize FPRSqrtStepFused(element1, element2, fpcr_state, esize);
+    }
+
+    V(Rd, result);
+}
+
+/*
+    FRECPS vector
+*/
+fl_instruction 32 frecps_vector(0 Q_1 0011100 sz_1 1 Rm_5 111111 Rn_5 Rd_5)
+{
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+    o128 result = vector_zero;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    loop (elements) e
+    {
+        o64 element1 = elm operand1 e esize;
+        o64 element2 = elm operand2 e esize;
+
+        elm result e esize FPRecipStepFused(element1, element2, fpcr_state, esize);
+    }
+
+    V(Rd, result);
+}
+
+/*
+    FMUL scalar element
+*/
+fl_instruction 32 fmul_scalar_by_element(010111111 sz_1 L_1 M_1 Rm_4 1001 H_1 0 Rn_5 Rd_5)
+{
+    int idxdsize = 64 << H;
+    int index;
+    int rm_hi = M;
+
+    int test = (sz << 1) | L;
+
+    if ((test >> 1) == 0)
+    {
+        index = L | (H << 1);
+    }
+    else if (test == 2)
+    {
+        index = H;
+    }
+    else
+    {
+        undefined();
+    }
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm | (rm_hi << 4));
+    o128 result = vector_zero;
+
+    int esize = 32 << sz;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    o64 product = FPMul(operand1, elm operand2 index esize, fpcr_state, esize);
+
+    elm result 0 esize product;
+    
+    V(Rd, result);
+}
+
+/*
+    FMUL vector element
+*/
+fl_instruction 32 fmul_vector_by_element(0 Q_1 0011111 sz_1 L_1 M_1 Rm_4 1001 H_1 0 Rn_5 Rd_5)
+{
+    int idxdsize = 64 << H;
+    int index;
+    int rm_hi = M;
+
+    int test = (sz << 1) | L;
+
+    if ((test >> 1) == 0)
+    {
+        index = L | (H << 1);
+    }
+    else if (test == 2)
+    {
+        index = H;
+    }
+    else
+    {
+        undefined();
+    }
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm | (rm_hi << 4));
+    o128 result = vector_zero;
+
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    o64 element2 = elm operand2 index esize;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    loop (elements) e
+    {
+        o64 element1 = elm operand1 e esize;
+
+        elm result e esize FPMul(element1, element2,fpcr_state, esize);
+    }
+
+    V(Rd, result);
+}
+
+/*
+    FMLA scalar element
+    FMLS scalar element
+*/
+fl_instruction 32 fmul_accumulate_scalar(010111111 sz_1 L_1 M_1 Rm_4 0 neg_1 01 H_1 0 Rn_5 Rd_5)
+{
+    int idxdsize = 64 << H;
+    int index;
+    int rm_hi = M;
+
+    int test = (sz << 1) | L;
+
+    if ((test >> 1) == 0)
+    {
+        index = L | (H << 1);
+    }
+    else if (test == 2)
+    {
+        index = H;
+    }
+    else
+    {
+        undefined();
+    }
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm | (rm_hi << 4));
+    o128 operand3 = V(Rd);
+
+    o128 result;
+
+    int esize = 32 << sz;
+
+    //TODO: use fma eventually
+    if (use_fast_float() && use_x86_sse())
+    {
+        int add_instruction;
+        int subtract_instruction;
+        int multiply_instruction;
+
+        operand2 = elm operand2 index esize;
+
+        if (esize == 64)
+        {
+            add_instruction = external x86_addsd;
+            subtract_instruction = external x86_subsd;
+            multiply_instruction = external x86_mulsd;
+        }
+        else
+        {
+            add_instruction = external x86_addss;
+            subtract_instruction = external x86_subss;
+            multiply_instruction = external x86_mulss;
+        }
+
+        result = intrinsic_binary<o128>(multiply_instruction, operand1, operand2);
+
+        if (neg)
+        {
+            result = intrinsic_binary<o128>(subtract_instruction, operand3, result);
+        }
+        else
+        {
+            result = intrinsic_binary<o128>(add_instruction, operand3, result);
+        }
+
+        elm result 1 64 (o64)0;
+
+        if (esize == 32)
+        {
+            elm result 1 32 (o64)0;
+        }
+    }
+    else
+    {
+        result = vector_zero;
+
+        o64 fpcr_state = _sys(external fpcr);
+
+        o64 element1 = operand1;
+
+        if (neg)
+        {
+            element1 = FPNeg(element1, fpcr_state, esize);
+        }
+
+        o64 product_accumalant = FPMulAdd(operand3, element1, elm operand2 index esize, fpcr_state, esize);
+
+        elm result 0 esize product_accumalant;
+    }
+
+    V(Rd, result);
+}
+
+/*
+    FMLA vector element
+    FMLS vector element
+*/
+fl_instruction 32 fmul_accumulate_element(0 Q_1 0011111 sz_1 L_1 M_1 Rm_4 0 neg_1 01 H_1 0 Rn_5 Rd_5)
+{
+    int idxdsize = 64 << H;
+    int index;
+    int rm_hi = M;
+
+    int test = (sz << 1) | L;
+
+    if ((test >> 1) == 0)
+    {
+        index = L | (H << 1);
+    }
+    else if (test == 2)
+    {
+        index = H;
+    }
+    else
+    {
+        undefined();
+    }
+
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm | (rm_hi << 4));
+    o128 operand3 = V(Rd);
+
+    o128 result;
+
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+
+    //TODO: use fma eventually
+    if (use_fast_float() && use_x86_sse())
+    {
+        int add_instruction;
+        int subtract_instruction;
+        int multiply_instruction;
+
+        if (esize == 64)
+        {
+            add_instruction = external x86_addpd;
+            subtract_instruction = external x86_subpd;
+            multiply_instruction = external x86_mulpd;
+        }
+        else
+        {
+            add_instruction = external x86_addps;
+            subtract_instruction = external x86_subps;
+            multiply_instruction = external x86_mulps;
+        }
+
+        operand2 = sse_copy_to_xmm_from_xmm_element(operand2, esize, index);
+
+        result = intrinsic_binary<o128>(multiply_instruction, operand1, operand2);
+
+        if (neg)
+        {
+            result = intrinsic_binary<o128>(subtract_instruction, operand3, result);
+        }
+        else
+        {
+            result = intrinsic_binary<o128>(add_instruction, operand3, result);
+        }
+
+        if (datasize == 64)
+        {
+            elm result 1 64 (o64)0;
+        }
+    }
+    else
+    {
+        result = vector_zero;
+
+        int elements = datasize / esize;
+
+        o64 element2 = elm operand2 index esize;
+
+        o64 fpcr_state = _sys(external fpcr);
+
+        loop (elements) e
+        {
+            o64 element1 = elm operand1 e esize;
+            o64 element3 = elm operand3 e esize;
+
+            if (neg)
+            {
+                element1 = FPNeg(element1, fpcr_state, esize);
+            }
+            
+            elm result e esize FPMulAdd(element3, element1, element2, fpcr_state, esize);
+        }
+    }
+
+    V(Rd, result);
+}
+
+/*
+    FADDP scalar
+*/
+fl_instruction 32 faddp_scalar(011111100 sz_1 110000110110 Rn_5 Rd_5)
+{
+    int esize = 32 << sz;
+    int datasize = esize * 2;
+
+    o128 operand = V(Rn);
+    o128 result = vector_zero;
+
+    o64 fpcr_state = _sys(external fpcr);
+
+    o64 bottom = elm operand 0 esize;
+    o64 top = elm operand 1 esize;
+
+    elm result 0 esize FPAdd(bottom, top, fpcr_state, esize);
+
+    V(Rd, result);
+}

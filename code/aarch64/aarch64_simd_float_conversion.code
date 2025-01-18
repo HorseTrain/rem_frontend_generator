@@ -1,0 +1,105 @@
+fl_instruction 32 conversion_between_floating_point_and_fixed_point(sf_1 0 S_1 11110 ftype_2 0 rmode_2 opcode_3 scale_6 Rn_5 Rd_5)
+{
+    int intsize = 32 << sf;
+    int fltsize = get_flt_size(ftype);
+    int fracbits = 64 - scale;
+
+    o64 result;
+
+    //int -> float
+    if (rmode == 0)
+    {
+        o64 source = X(Rn);
+
+        result = FixedToFP(source, fracbits, opcode == 3, fltsize, intsize);
+
+        V(Rd, result);
+    }
+    //float -> int
+    else if (rmode == 3)
+    {
+        o64 source = V(Rn);
+
+        result = FPToFixed(source, fracbits, opcode == 1, external FPRounding_ZERO, intsize, fltsize);
+
+        X(Rd, result);
+    }
+    else
+    {
+        undefined_with(100);
+    }
+}
+
+/*
+    FCVT scalar
+*/
+fl_instruction 32 fcvt(00011110 ftype_2 10001 opc_2 10000 Rn_5 Rd_5)
+{
+    int srcsize = get_flt_size(ftype);
+    int dstsize = get_flt_size(opc);
+
+    o64 operand = V(Rn);
+    
+    V(Rd,FPConvert(operand, dstsize, srcsize));
+}
+
+/*
+    FCVTZS
+    FCVTZU
+*/
+fl_instruction 32 fcvtz_scalar_integer(sf_1 0011110 ftype_2 11100 U_1 000000 Rn_5 Rd_5)
+{
+    convert_to_int(sf, ftype, Rd, Rn, external FPRounding_ZERO, U, 0);
+}
+
+/*
+    FCVTNS
+    FCVTNU
+*/
+fl_instruction 32 fcvtn_scalar_integer(sf_1 0011110 ftype_2 10000 U_1 000000 Rn_5 Rd_5)
+{
+    convert_to_int(sf, ftype, Rd, Rn, external FPRounding_TIEEVEN, U, 0);
+}
+
+/*
+    FCVTAS
+    FCVTAU
+*/
+fl_instruction 32 fcvta_scalar_integer(sf_1 0011110 ftype_2 10010 U_1 000000 Rn_5 Rd_5)
+{
+    convert_to_int(sf, ftype, Rd, Rn, external FPRounding_TIEAWAY, U, 0);
+}
+
+/*
+    FCVTMS
+    FCVTMU
+*/
+fl_instruction 32 fcvtm_scalar_integer(sf_1 0011110 ftype_2 11000 U_1 000000 Rn_5 Rd_5)
+{
+    convert_to_int(sf, ftype, Rd, Rn, external FPRounding_NEGINF, U, 0);
+}
+
+/*
+    FRINTP scalar
+*/
+fl_instruction 32 frintp_scalar(00011110 ftype_2 100100110000 Rn_5 Rd_5)
+{
+    frint(ftype, Rn, Rd, external FPRounding_POSINF);
+}
+
+/*
+    FRINTM scalar
+*/
+fl_instruction 32 frintm_scalar(00011110 ftype_2 100101010000 Rn_5 Rd_5)
+{
+    frint(ftype, Rn, Rd, external FPRounding_NEGINF);
+}
+
+/*
+    FCVTPS
+    FCVTPU
+*/
+fl_instruction 32 fcvtp_scalar_integer(sf_1 0011110 ftype_2 10100 U_1 000000 Rn_5 Rd_5)
+{
+    convert_to_int(sf, ftype, Rd, Rn, external FPRounding_POSINF, U, 0);
+}
