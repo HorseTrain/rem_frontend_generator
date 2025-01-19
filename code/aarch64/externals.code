@@ -18,6 +18,7 @@ void load_context() external
 int use_fast_float() external
 int use_x86_sse() external
 int use_x86_sse2() external
+int use_x86_sse41() external
 
 //pc
 int _get_pc() external

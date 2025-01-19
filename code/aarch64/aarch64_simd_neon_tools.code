@@ -1,3 +1,11 @@
+o64 create_mask(int bits)
+{
+    if (bits >= 64)
+        return -1;
+
+    return (1 << bits) - 1;
+}
+
 o64 shift_left_check(o64 to_shift, o64 shift, int size)
 {
     o64 result = 0;
@@ -1006,12 +1014,126 @@ o64 FixedToFP(o64 source, int fracbits, int is_unsigned, int to, int from)
 
 o64 FPToFixed(o64 source, int fracbits, int is_unsigned, int round, int to, int from) 
 {
-    if (use_fast_float() && to != 16 && from != 16)
+    if (use_fast_float() && to != 16 && from != 16 && round != external FPRounding_ODD)
     {
-        o_type F = switch to {case 32 : o32, case 64 : o64 };
-        o_type I = switch from {case 32 : o32, case 64 : o64 };
+        o_type F = switch from {case 32 : o32, case 64 : o64 };
+        o_type I = switch to {case 32 : o32, case 64 : o64 };
 
-        //TODO
+        o64 max_i;
+        o64 min_i;
+
+        F max;
+        F min;
+
+        if (is_unsigned)
+        {
+            min = 0;
+            max = to_float F create_mask(to);
+
+            min_i = 0
+            max_i = create_mask(to);
+        }
+        else
+        {
+            min = to_float signed F (I)(1 << (to - 1));
+            max = to_float signed F (I)(create_mask(to - 1));
+
+            min_i = (I)(1 << (to - 1));
+            max_i = (I)(create_mask(to - 1));
+        }
+
+        F working = source;
+
+        if (fracbits != 0)
+        {
+            F power = create_fixed_from_fbits<F>(fracbits, from);
+
+            working = power fmul working;
+        }
+
+        if (use_x86_sse41())
+        {
+            int rounding_control;
+
+            if (round == external FPRounding_TIEEVEN)
+            {
+                rounding_control = 0b00;
+            }
+            else if (round == external FPRounding_NEGINF)
+            {
+                rounding_control = 0b01;
+            }
+            else if (round == external FPRounding_POSINF)
+            {
+                rounding_control = 0b10;
+            }
+            else if (round == external FPRounding_ZERO)
+            {
+                rounding_control = 0b11;
+            }
+            else if (round == external FPRounding_TIEAWAY)
+            {
+                rounding_control = 0b10;
+
+                if (working fclte 0)
+                {
+                    set working (working fsub (F)float_imm(1, from));
+                }
+            }
+            else
+            {
+                undefined();
+            }
+
+            if (from == 32)
+            {
+                working = intrinsic_binary_imm<o128>(external x86_roundss, working, rounding_control);
+            }
+            else
+            {
+                working = intrinsic_binary_imm<o128>(external x86_roundsd, working, rounding_control);
+            }
+        }
+        else
+        {
+            undefined();
+        }
+
+        I result = 0;
+
+        if (working fcgte max)
+        {
+            set result (I)max_i;
+        }
+        else if (working fclte min)
+        {
+            set result (I)min_i;
+        }
+        else if (is_unsigned)
+        {
+            I s_max_i = (I)(create_mask(to - 1));
+
+            F s_max = to_float signed F s_max_i;
+
+            if (working cgt s_max)
+            {
+                F difference = working fsub s_max;
+                set working working fsub difference      
+
+                set result (I)(to_int signed I difference);
+                set result result + (I)(to_int signed I working);
+            }
+            else
+            {
+                set result (I)(to_int signed I working);
+            }
+        }
+        else
+        {          
+            set result (I)(to_int signed I working);
+        }
+
+        return result;
     }
 
     return call(source, fracbits, is_unsigned, round, to, from, external FPToFixed_I);

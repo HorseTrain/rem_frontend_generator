@@ -168,6 +168,7 @@ namespace rem_frontend_generator.generators
                     case "fmax": return "ir_floating_point_select_max";
                     case "fmin": return "ir_floating_point_select_min";
                     case "fclt": return "ir_floating_point_compare_less";
+                    case "fclte": return "ir_floating_point_compare_less_equal";
                     case "feq": return "ir_floating_point_compare_equal";
                     case "fcgt": return "ir_floating_point_compare_greater";
                     case "fcgte": return "ir_floating_point_compare_greater_equal";
@@ -198,6 +199,7 @@ namespace rem_frontend_generator.generators
                     case "fcgte":
                     case "fcgt": 
                     case "fsqrt":
+                    case "fclte":
                         return "undefined";
 
                     default:
@@ -784,7 +786,14 @@ namespace rem_frontend_generator.generators
                             throw new Exception();
                         }
 
-                        return $"ssa_emit_context::convert_to_float({get_default_argument(interpreted)},{generate_object(fpc.source, interpreted)},{get_explicit_rem_type(fpc.new_type)},{get_explicit_rem_type(fpc.source.get_type())}, {(fpc.is_signed ? "1" : "0")})";
+                        if (fpc.to_float)
+                        {
+                            return $"ssa_emit_context::convert_to_float({get_default_argument(interpreted)},{generate_object(fpc.source, interpreted)},{get_explicit_rem_type(fpc.new_type)},{get_explicit_rem_type(fpc.source.get_type())}, {(fpc.is_signed ? "1" : "0")})";
+                        }
+                        else
+                        {
+                            return $"ssa_emit_context::convert_to_integer({get_default_argument(interpreted)},{generate_object(fpc.source, interpreted)},{get_explicit_rem_type(fpc.new_type)},{get_explicit_rem_type(fpc.source.get_type())}, {(fpc.is_signed ? "1" : "0")})";
+                        }
                     }
                 }; 
 
