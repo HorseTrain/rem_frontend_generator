@@ -695,14 +695,41 @@ fl_instruction 32 add_vector(0 Q_1 001110 size_2 1 Rm_5 100001 Rn_5 Rd_5)
 
     o128 operand1 = V(Rn);
     o128 operand2 = V(Rm);
-    o128 result = vector_zero;
+    o128 result;
 
-    loop (elements) e
+    if (use_x86_sse2())
     {
-        o64 element1 = elm operand1 e esize;
-        o64 element2 = elm operand2 e esize;
+        int add_instruction;
 
-        elm result e esize (element1 + element2);
+        if (esize == 8)
+            add_instruction = external x86_paddb
+        else if (esize == 16)
+            add_instruction = external x86_paddw
+        else if (esize == 32)
+            add_instruction = external x86_paddd
+        else if (esize == 64)
+            add_instruction = external x86_paddq
+        else
+            undefined();
+
+        result = intrinsic_binary<o128>(add_instruction, operand1, operand2);
+
+        if (Q == 0)
+        {
+            elm result 1 64 (o64)0;
+        }
+    }
+    else
+    {
+        result = vector_zero;
+
+        loop (elements) e
+        {
+            o64 element1 = elm operand1 e esize;
+            o64 element2 = elm operand2 e esize;
+
+            elm result e esize (element1 + element2);
+        }
     }
 
     V(Rd, result);
@@ -762,13 +789,20 @@ fl_instruction 32 cnt(0 Q_1 001110 size_2 100000010110 Rn_5 Rd_5)
         o8 working = elm source e esize;
         o8 count = 0;
 
-        loop (esize) b
+        if (use_x86())
         {
-            o8 bit = (working >> b) & 1;
-
-            if (bit)
+            count = intrinsic_unary<o16>(external x86_popcnt, working);
+        }
+        else
+        {
+            loop (esize) b
             {
-                set count (count + 1);
+                o8 bit = (working >> b) & 1;
+
+                if (bit)
+                {
+                    set count (count + 1);
+                }
             }
         }
 
@@ -828,18 +862,34 @@ fl_instruction 32 bsl_vector(0 Q_1 101110011 Rm_5 000111 Rn_5 Rd_5)
     o128 operand2 = V(Rd);
     o128 operand3 = V(Rn);
 
-    o128 result = vector_zero;
-
-    loop (elements) e
+    if (use_x86_sse())
     {
-        o64 element1 = elm operand1 e esize;
-        o64 element2 = elm operand2 e esize;
-        o64 element3 = elm operand3 e esize;
+        o128 xor_result = intrinsic_binary<o128>(external x86_xorps, operand1, operand3);
+        o128 and_result = intrinsic_binary<o128>(external x86_pand, xor_result, operand2);
+        o128 final_result = intrinsic_binary<o128>(external x86_xorps, operand1, and_result);
 
-        elm result e esize (element1 ^ ((element1 ^ element3) & element2));
+        if (Q == 0)
+        {
+            elm final_result 1 64 (o64)0;
+        }
+
+        V(Rd, final_result);
     }
+    else
+    {
+        o128 result = vector_zero;
 
-    V(Rd, result);
+        loop (elements) e
+        {
+            o64 element1 = elm operand1 e esize;
+            o64 element2 = elm operand2 e esize;
+            o64 element3 = elm operand3 e esize;
+
+            elm result e esize (element1 ^ ((element1 ^ element3) & element2));
+        }
+
+        V(Rd, result);
+    }
 }
 
 /*
@@ -1054,56 +1104,6 @@ fl_instruction 32 st1_single_structure_post_index(0 Q_1 001101100 Rm_5 opcode_2 
     memory_1(true, Q, 1, 0, Rm, 0, opcode << 1, S, size, Rn, Rt, false);
 }
 
-//FLOATING POINT
-
-/*
-    FCMEQ vector zero
-*/
-fl_instruction 32 fcmeq_vector_zero(0 Q_1 0011101 sz_1 100000110110 Rn_5 Rd_5)
-{
-    fcm_vector(Rd, Rn, -1, 0, Q, sz);
-}
-
-/*
-    FCMGT vector zero
-*/
-fl_instruction 32 fcmgt_vector_zero(0 Q_1 0011101 sz_1 100000110010 Rn_5 Rd_5)
-{
-    fcm_vector(Rd, Rn, -1, 1, Q, sz);
-}
-
-/*
-    FCMGE vector zero
-*/
-fl_instruction 32 fcmge_vector_zero(0 Q_1 1011101 sz_1 100000110010 Rn_5 Rd_5)
-{
-    fcm_vector(Rd, Rn, -1, 2, Q, sz);
-}
-
-/*
-    FCMEQ vector register
-*/
-fl_instruction 32 fcmeq_vector_register(0 Q_1 0011100 sz_1 1 Rm_5 111001 Rn_5 Rd_5)
-{
-    fcm_vector(Rd, Rn, Rm, 0, Q, sz);
-}
-
-/*
-    FCMGT vector register
-*/
-fl_instruction 32 fcmgt_vector_register(0 Q_1 1011101 sz_1 1 Rm_5 111001 Rn_5 Rd_5)
-{
-    fcm_vector(Rd, Rn, Rm, 1, Q, sz);
-}
-
-/*
-    FCMGE vector register
-*/
-fl_instruction 32 fcmge_vector_register(0 Q_1 1011100 sz_1 1 Rm_5 111001 Rn_5 Rd_5)
-{
-    fcm_vector(Rd, Rn, Rm, 2, Q, sz);
-}
-
 /*
     FCSEL
 */
@@ -1114,9 +1114,7 @@ fl_instruction 32 floating_point_conditional_select(00011110 ftype_2 1 Rm_5 cond
     o128 operand1 = V(Rn);
     o128 operand2 = V(Rm);
 
-    o_type O = switch fltsize { case 32 : o32, case 64 : o64 };
-
-    O result = 0;
+    o128 result = vector_zero;
 
     if (condition_holds(cond))
     {
@@ -1126,6 +1124,8 @@ fl_instruction 32 floating_point_conditional_select(00011110 ftype_2 1 Rm_5 cond
     {
         set result operand2;
     }
+    
+    result = clear_vector_scalar(result, fltsize);
 
     V(Rd, result);
 }

@@ -1089,6 +1089,18 @@ R intrinsic_ternary_imm_interpreter(interpreter_data* ctx, uint64_t instruction,
 
 }
 
+template <typename O>
+O x86_add_set_flags_interpreter(interpreter_data* ctx, O n, O m)
+{
+
+}
+
+template <typename O>
+O x86_subtract_set_flags_interpreter(interpreter_data* ctx, O n, O m)
+{
+
+}
+
 ");
 
             string table_create_function = $"void init_aarch64_decoder(guest_process* process)\n{{\n";

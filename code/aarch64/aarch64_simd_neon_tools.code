@@ -22,6 +22,34 @@ o64 shift_left_check(o64 to_shift, o64 shift, int size)
     return result;
 }
 
+int get_x86_rounding_mode(int rounding)
+{
+    int rounding_control;
+
+    if (rounding == external FPRounding_TIEEVEN)
+    {
+        rounding_control = 0b00;
+    }
+    else if (rounding == external FPRounding_NEGINF)
+    {
+        rounding_control = 0b01;
+    }
+    else if (rounding == external FPRounding_POSINF)
+    {
+        rounding_control = 0b10;
+    }
+    else if (rounding == external FPRounding_ZERO)
+    {
+        rounding_control = 0b11;
+    }
+    else
+    {
+        undefined();
+    }
+
+    return rounding_control;
+}
+
 o64 shift_right_check(o64 to_shift, o64 shift, int size, int is_unsigned)
 {
     o64 result = 0;
@@ -508,53 +536,6 @@ void memory_1(int wback,int Q, int L, int R, int Rm, int o2, int opcode, int S, 
     }
 }
 
-void fcm_vector(int Rd, int Rn, int Rm, int mode, int Q, int sz)
-{
-    o128 n = V(Rn);
-    o128 m;
-
-    o128 result = vector_zero;
-
-    if (Rm == -1)
-    {
-        m = vector_zero;
-    }
-    else
-    {
-        m = V(Rm);
-    }
-
-    int esize = 32 << sz;
-    int datasize = 64 << Q;
-    int elements = datasize / esize;
-
-    o64 fpcr_state = _sys(external fpcr);
-
-    loop (elements) e
-    {
-        o64 element1 = elm n e esize;
-        o64 element2 = elm m e esize;
-        o64 element_result;
-
-        if (mode == 0)
-        {
-            element_result = 0 - FPCompareEQ(element1, element2, fpcr_state, esize);
-        }
-        else if (mode == 1)
-        {
-            element_result = 0 - FPCompareGT(element1, element2, fpcr_state, esize);
-        }
-        else if (mode == 2)
-        {
-            element_result = 0 - FPCompareGE(element1, element2, fpcr_state, esize);
-        }
-
-        elm result e esize element_result;
-    }
-
-    V(Rd, result);
-}
-
 o64 bits_r(o64 operand, int top, int bottom)
 {
     top = top + 1;
@@ -861,7 +842,7 @@ o64 FPRecipStepFused(o64 operand1, o64 operand2, o64 FPCR, int N)
     {
         o_type F = switch N {case 32 : o32, case 64 : o64 };
 
-        F o1 = operand1 ^ (1 << (N -1));
+        F o1 = operand1 ^ (1 << (N - 1));
         F o2 = operand2;
 
         F two = float_imm(2, N);
@@ -1006,6 +987,11 @@ o64 FixedToFP(o64 source, int fracbits, int is_unsigned, int to, int from)
             working_result = to_float signed F (I)source;
         }
 
+        if (fracbits == 0)
+        {
+            return working_result;
+        }
+
         return working_result fdiv power;
     }
 
@@ -1014,7 +1000,7 @@ o64 FixedToFP(o64 source, int fracbits, int is_unsigned, int to, int from)
 
 o64 FPToFixed(o64 source, int fracbits, int is_unsigned, int round, int to, int from) 
 {
-    if (use_fast_float() && to != 16 && from != 16 && round != external FPRounding_ODD)
+    if (use_fast_float() && to != 16 && from != 16 && round != external FPRounding_ODD && use_x86_sse41())
     {
         o_type F = switch from {case 32 : o32, case 64 : o64 };
         o_type I = switch to {case 32 : o32, case 64 : o64 };
@@ -1051,52 +1037,45 @@ o64 FPToFixed(o64 source, int fracbits, int is_unsigned, int round, int to, int 
             working = power fmul working;
         }
 
-        if (use_x86_sse41())
+        int rounding_control;
+
+        if (round == external FPRounding_TIEEVEN)
         {
-            int rounding_control;
+            rounding_control = 0b00;
+        }
+        else if (round == external FPRounding_NEGINF)
+        {
+            rounding_control = 0b01;
+        }
+        else if (round == external FPRounding_POSINF)
+        {
+            rounding_control = 0b10;
+        }
+        else if (round == external FPRounding_ZERO)
+        {
+            rounding_control = 0b11;
+        }
+        else if (round == external FPRounding_TIEAWAY)
+        {
+            rounding_control = 0b10;
 
-            if (round == external FPRounding_TIEEVEN)
+            if (working fclte 0)
             {
-                rounding_control = 0b00;
-            }
-            else if (round == external FPRounding_NEGINF)
-            {
-                rounding_control = 0b01;
-            }
-            else if (round == external FPRounding_POSINF)
-            {
-                rounding_control = 0b10;
-            }
-            else if (round == external FPRounding_ZERO)
-            {
-                rounding_control = 0b11;
-            }
-            else if (round == external FPRounding_TIEAWAY)
-            {
-                rounding_control = 0b10;
-
-                if (working fclte 0)
-                {
-                    set working (working fsub (F)float_imm(1, from));
-                }
-            }
-            else
-            {
-                undefined();
-            }
-
-            if (from == 32)
-            {
-                working = intrinsic_binary_imm<o128>(external x86_roundss, working, rounding_control);
-            }
-            else
-            {
-                working = intrinsic_binary_imm<o128>(external x86_roundsd, working, rounding_control);
+                set working (working fsub (F)float_imm(1, from));
             }
         }
         else
         {
             undefined();
+        }
+
+        if (from == 32)
+        {
+            working = intrinsic_binary_imm<o128>(external x86_roundss, working, rounding_control);
+        }
+        else
+        {
+            working = intrinsic_binary_imm<o128>(external x86_roundsd, working, rounding_control);
         }
 
         I result = 0;
@@ -1141,9 +1120,25 @@ o64 FPToFixed(o64 source, int fracbits, int is_unsigned, int round, int to, int 
 
 o64 FPConvert(o64 source, int to, int from)
 {
+    if (to == from)
+    {
+        undefined();
+    }
+
     if (use_fast_float() && to != 16 && from != 16)
     {
-        //TODO
+        o64 result;
+
+        if (to == 32 && from == 64)
+        {
+            result = intrinsic_unary<o128>(external x86_cvtsd2ss, source);
+        }
+        else
+        {
+            result = intrinsic_unary<o128>(external x86_cvtss2sd, source);
+        }
+
+        return result;
     }
 
     return call(source, 0, 0, to, from, 0, external FPConvert_I);
@@ -1260,18 +1255,32 @@ void float_binary_vector(int Rd, int Rn, int Rm, int Q, int sz, (o64 (o64, o64, 
 
 void frint(int ftype,int Rn, int Rd, int rounding)
 {
-    o128 operand1 = V(Rn);
-    o128 result = vector_zero;
+    o128 operand = V(Rn);
 
     int esize = get_flt_size(ftype);
 
-    o64 fpcr_state = _sys(external fpcr);
+    if (use_fast_float() && use_x86_sse() && rounding != external FPRounding_TIEAWAY)
+    {
+        int rounding_control = get_x86_rounding_mode(rounding);
 
-    o64 working = FPRoundInt(operand1, fpcr_state, rounding, esize);
+        o128 result = intrinsic_binary_imm<o128>(select(esize == 64, external x86_roundsd, external x86_roundss), operand, rounding_control);
 
-    elm result 0 esize working;
+        result = clear_vector_scalar(result, esize);
 
-    V(Rd, result);
+        V(Rd, result);
+    }
+    else
+    {
+        o128 result = vector_zero;
+
+        o64 fpcr_state = _sys(external fpcr);
+
+        o64 working = FPRoundInt(operand, fpcr_state, rounding, esize);
+
+        elm result 0 esize working;
+
+        V(Rd, result);
+    }
 }
 
 void intrinsic_float_binary_vector(int Rd, int Rn, int Rm, int Q, int sz, int float_instruction, int double_instruction)
@@ -1320,6 +1329,7 @@ void intrinsic_float_binary_scalar(int Rd, int Rn, int Rm, int fsize, int half_i
         result = intrinsic_binary<o128>(half_instruction, operand1, operand2);
 
         elm result 1 16 (o64)0;
+        elm result 1 32 (o64)0;
     }
     else
     {
@@ -1409,4 +1419,332 @@ o128 sse_coppy_gp_across_lanes(o64 source, int size)
     {
         undefined();
     }
+}
+
+void floating_point_multiply_scalar_element(int Rd, int Rn, int Rm, int sz,int index)
+{
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+
+    int esize = 32 << sz;
+
+    if (use_x86_sse())
+    { 
+        operand2 = sse_copy_to_xmm_from_xmm_element(operand2, esize, index);
+
+        int multiply_instruction; if (esize == 32) multiply_instruction = external x86_mulss else multiply_instruction = external x86_mulsd;
+
+        o128 result = intrinsic_binary<o128>(multiply_instruction, operand1, operand2);
+
+        if (esize == 32)
+        {
+            elm result 1 32 (o64)0;
+        }
+
+        elm result 1 64 (o64)0;
+
+        V(Rd, result);
+    }
+    else
+    {
+        o128 result = vector_zero;
+
+        o64 fpcr_state = _sys(external fpcr);
+
+        o64 product = FPMul(operand1, elm operand2 index esize, fpcr_state, esize);
+
+        elm result 0 esize product;
+        
+        V(Rd, result);
+    }
+}
+
+void floating_point_multiply_vector_element(int Q,int Rd, int Rn, int Rm, int sz,int index)
+{
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+
+    if (use_x86_sse())
+    {
+        operand2 = sse_copy_to_xmm_from_xmm_element(operand2, esize, index);
+
+        int multiply_instruction; if (esize == 32) multiply_instruction = external x86_mulps else multiply_instruction = external x86_mulpd;
+
+        o128 result = intrinsic_binary<o128>(multiply_instruction, operand1, operand2);
+
+        if (datasize == 64)
+        {
+            elm result 1 64 (o64)0;
+        }
+
+        V(Rd, result);
+    }
+    else
+    {
+        o128 result = vector_zero;
+
+        int elements = datasize / esize;
+
+        o64 element2 = elm operand2 index esize;
+
+        o64 fpcr_state = _sys(external fpcr);
+
+        loop (elements) e
+        {
+            o64 element1 = elm operand1 e esize;
+
+            elm result e esize FPMul(element1, element2,fpcr_state, esize);
+        }
+
+        V(Rd, result);   
+    }
+}
+
+void floating_point_multiply_accumulate_scalar_element(int Rd, int Rn, int Rm, int neg, int sz,int index)
+{
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+    o128 operand3 = V(Rd);
+
+    o128 result;
+
+    int esize = 32 << sz;
+
+    //TODO: use fma eventually
+    if (use_fast_float() && use_x86_sse())
+    {
+        int add_instruction;
+        int subtract_instruction;
+        int multiply_instruction;
+
+        operand2 = elm operand2 index esize;
+
+        if (esize == 64)
+        {
+            add_instruction = external x86_addsd;
+            subtract_instruction = external x86_subsd;
+            multiply_instruction = external x86_mulsd;
+        }
+        else
+        {
+            add_instruction = external x86_addss;
+            subtract_instruction = external x86_subss;
+            multiply_instruction = external x86_mulss;
+        }
+
+        result = intrinsic_binary<o128>(multiply_instruction, operand1, operand2);
+
+        if (neg)
+        {
+            result = intrinsic_binary<o128>(subtract_instruction, operand3, result);
+        }
+        else
+        {
+            result = intrinsic_binary<o128>(add_instruction, operand3, result);
+        }
+
+        elm result 1 64 (o64)0;
+
+        if (esize == 32)
+        {
+            elm result 1 32 (o64)0;
+        }
+    }
+    else
+    {
+        result = vector_zero;
+
+        o64 fpcr_state = _sys(external fpcr);
+
+        o64 element1 = operand1;
+
+        if (neg)
+        {
+            element1 = FPNeg(element1, fpcr_state, esize);
+        }
+
+        o64 product_accumalant = FPMulAdd(operand3, element1, elm operand2 index esize, fpcr_state, esize);
+
+        elm result 0 esize product_accumalant;
+    }
+
+    V(Rd, result);
+}
+
+void floating_point_multiply_accumulate_vector_element(int Q,int Rd, int Rn, int Rm, int neg, int sz,int index)
+{
+    o128 operand1 = V(Rn);
+    o128 operand2 = V(Rm);
+    o128 operand3 = V(Rd);
+
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+
+    o128 result;
+
+    //TODO: use fma eventually
+    if (use_fast_float() && use_x86_sse())
+    {
+        int add_instruction;
+        int subtract_instruction;
+        int multiply_instruction;
+
+        if (esize == 64)
+        {
+            add_instruction = external x86_addpd;
+            subtract_instruction = external x86_subpd;
+            multiply_instruction = external x86_mulpd;
+        }
+        else
+        {
+            add_instruction = external x86_addps;
+            subtract_instruction = external x86_subps;
+            multiply_instruction = external x86_mulps;
+        }
+
+        operand2 = sse_copy_to_xmm_from_xmm_element(operand2, esize, index);
+
+        result = intrinsic_binary<o128>(multiply_instruction, operand1, operand2);
+
+        if (neg)
+        {
+            result = intrinsic_binary<o128>(subtract_instruction, operand3, result);
+        }
+        else
+        {
+            result = intrinsic_binary<o128>(add_instruction, operand3, result);
+        }
+
+        if (datasize == 64)
+        {
+            elm result 1 64 (o64)0;
+        }
+    }
+    else
+    {
+        result = vector_zero;
+
+        int elements = datasize / esize;
+
+        o64 element2 = elm operand2 index esize;
+
+        o64 fpcr_state = _sys(external fpcr);
+
+        loop (elements) e
+        {
+            o64 element1 = elm operand1 e esize;
+            o64 element3 = elm operand3 e esize;
+
+            if (neg)
+            {
+                element1 = FPNeg(element1, fpcr_state, esize);
+            }
+            
+            elm result e esize FPMulAdd(element3, element1, element2, fpcr_state, esize);
+        }
+    }
+
+    V(Rd, result);
+}
+
+/*
+    FLOATING POINT COMPARE
+*/
+void fcm_vector(int Rd, int Rn, int Rm, int mode, int Q, int sz)
+{
+    o128 n = V(Rn);
+    o128 m;
+
+    if (Rm == -1)
+    {
+        m = vector_zero;
+    }
+    else
+    {
+        m = V(Rm);
+    }
+
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+
+    if (use_x86_sse())
+    {
+        o128 result;
+
+        int operation = select(esize == 64, external x86_cmppd, external x86_cmpps);
+        int control;
+
+        if (mode == 0)
+        {
+            control = 0;
+        }
+        else if (mode == 1)
+        {
+            //>
+            //! <=
+            control = 6;
+        }
+        else if (mode == 2)
+        {
+            // >=
+            //! <
+            control = 5;
+        }
+
+        result = intrinsic_ternary_imm<o128>(operation, n, m, control);
+
+        if (datasize == 64)
+        {
+            elm result 1 64 (o64)0;
+        }
+
+        V(Rd, result);
+    }
+    else
+    {
+        o128 result = vector_zero;
+
+        int elements = datasize / esize;
+
+        o64 fpcr_state = _sys(external fpcr);
+
+        loop (elements) e
+        {
+            o64 element1 = elm n e esize;
+            o64 element2 = elm m e esize;
+            o64 element_result;
+
+            if (mode == 0)
+            {
+                element_result = 0 - FPCompareEQ(element1, element2, fpcr_state, esize);
+            }
+            else if (mode == 1)
+            {
+                element_result = 0 - FPCompareGT(element1, element2, fpcr_state, esize);
+            }
+            else if (mode == 2)
+            {
+                element_result = 0 - FPCompareGE(element1, element2, fpcr_state, esize);
+            }
+
+            elm result e esize element_result;
+        }
+
+        V(Rd, result);
+    }
+}
+
+o128 clear_vector_scalar(o128 working, int fltsize)
+{
+    if (fltsize == 32)
+    {
+        elm working 1 32 (o64)0;
+    }
+
+    elm working 1 64 (o64)0;
+
+    return working;
 }

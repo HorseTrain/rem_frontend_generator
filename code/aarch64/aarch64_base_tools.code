@@ -215,6 +215,20 @@ O add_subtract_impl<O>(O n, O m, int set_flags, int is_add)
 {
     O d;
 
+    if (set_flags && use_x86())
+    {
+        if (is_add)
+        {
+            d = x86_add_set_flags<O>(n, m);
+        }
+        else
+        {
+            d = x86_subtract_set_flags<O>(n, m);
+        }
+
+        return d;
+    }
+
     if (is_add)
     {
         d = n + m;
@@ -341,4 +355,12 @@ void branch_long_universal(int Rn, int link)
     }
 
     _branch_long(branch_location);
+}
+
+int select(int condition, int yes, int no)
+{
+    if (condition)
+        return yes;
+
+    return no;
 }

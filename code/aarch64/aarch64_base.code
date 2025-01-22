@@ -272,6 +272,17 @@ fl_instruction 32 divide(sf_1 0011010110 Rm_5 00001 o1_1 Rn_5 Rd_5)
 /*
     RBIT d, n, m
 */
+int create_rbit_mask(int index)
+{
+    index = 1 << index;
+
+    int mask = ((1 << index) - 1) << index;
+
+    mask = replicate_c(mask, index * 2, 64 / index / 2);
+
+    return mask;
+}
+
 fl_instruction 32 rbit(sf_1 101101011000000000000 Rn_5 Rd_5)
 {
     int datasize = 32 << sf;
@@ -279,13 +290,18 @@ fl_instruction 32 rbit(sf_1 101101011000000000000 Rn_5 Rd_5)
     o_type O = switch sf { case 0 : o32, case 1 : o64 };
 
     O operand = X(Rn);
-    O result = 0;
+    O result = operand;
 
-    loop (datasize) i
+    int max = 5 + sf;
+
+    loop (max) i
     {
-        O working = (operand >> i) & 1;
+        int n_mask = create_rbit_mask(i);
+        int i_mask = ~n_mask; 
 
-        result = result | (working << (datasize - i - 1));
+        int shift = 1 << i;
+
+        result = ((result & n_mask) >> shift) | ((result & i_mask) << shift);
     }
 
     X(Rd, result);
@@ -350,7 +366,6 @@ fl_instruction 32 count_leading(sf_1 10110101100000000010 s_1 Rn_5 Rd_5)
 
     o_type O = switch sf { case 0 : o32, case 1 : o64 };
 
-
   /*THIS IS VERY VERY BAD CODE!!!
     Eventually i want to add breaking
     to both jit and interpreter. For now,
@@ -367,25 +382,48 @@ fl_instruction 32 count_leading(sf_1 10110101100000000010 s_1 Rn_5 Rd_5)
         datasize = datasize - 1;
     }
 
-    loop (datasize) i
+    if (use_x86_lzcnt())
     {
-        O working = (operand >> (datasize - i - 1)) & 1;
-
         if (s)
         {
-            if (working != sig_bit)
+            O nhigh = operand >> 1;
+
+            O mask = -1;
+            mask = mask >> 1;
+            
+            O nlow = operand & mask
+
+            result = intrinsic_unary<O>(external x86_lzcnt, (nhigh ^ nlow));
+
+            result = result - 1;
+        }
+        else
+        {
+            result = intrinsic_unary<O>(external x86_lzcnt, operand);
+        }
+    }
+    else
+    {
+        loop (datasize) i
+        {
+            O working = (operand >> (datasize - i - 1)) & 1;
+
+            if (s)
+            {
+                if (working != sig_bit)
+                {
+                    set done 1;
+                }
+            }
+            else if (working)
             {
                 set done 1;
             }
-        }
-        else if (working)
-        {
-            set done 1;
-        }
 
-        if (!done)
-        {
-            set result result + 1;
+            if (!done)
+            {
+                set result result + 1;
+            }
         }
     }
 
@@ -1400,6 +1438,11 @@ fl_instruction 32 load_store_exclusive_ordered(size_2 001000 ordered_1 L_1 0 Rs_
     }
 }
 
+o64 exclusive_address_mask()
+{
+    return ~((4 << 4) - 1);
+}
+
 void load_exclusive(int is_exclusive, int size, int Rn, int Rt)
 {
     int datasize = 8 << size;
@@ -1412,7 +1455,7 @@ void load_exclusive(int is_exclusive, int size, int Rn, int Rt)
 
     if (is_exclusive)
     {
-        _sys(external exclusive_address, address & ~63);
+        _sys(external exclusive_address, address & exclusive_address_mask());
         _sys(external exclusive_value, value);
     }
 
@@ -1429,7 +1472,7 @@ void store_exclusive(int is_exclusive, int size, int Rn, int Rt, int Rs)
 
     if (is_exclusive)
     {
-        o64 mask = ~63;
+        o64 mask = exclusive_address_mask();
         o64 _exclusive_address = _sys(external exclusive_address)
 
         if (_exclusive_address == (address & mask))
@@ -1439,7 +1482,7 @@ void store_exclusive(int is_exclusive, int size, int Rn, int Rt, int Rs)
 
             S cas_success = compare_and_swap(address, expecting, to_swap, datasize);
 
-            X(Rs, cas_success ^ 1);
+            X(Rs, (cas_success ^ 1) & 1);
         }
         else
         {

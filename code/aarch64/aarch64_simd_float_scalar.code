@@ -113,6 +113,46 @@ fl_instruction 32 fminnm_scalar(00011110 ftype_2 1 Rm_5 011110 Rn_5 Rd_5)
 */
 fl_instruction 32 fnmul_scalar(00011110 ftype_2 1 Rm_5 100010 Rn_5 Rd_5)
 {
+    if (use_fast_float() && use_x86_sse() && ftype != 0b11)
+    {
+        o128 operand1 = V(Rn);
+        o128 operand2 = V(Rm);
+
+        int esize = get_flt_size(ftype);
+
+        o128 negator = (o64)(1 << (esize - 1));
+
+        int multiply_instruction;
+
+        if (esize == 32)
+        {
+            multiply_instruction = external x86_mulss;
+        }
+        else if (esize == 64)
+        {
+            multiply_instruction = external x86_mulsd;
+        }
+        else
+        {
+            undefined();
+        }
+
+        operand2 = intrinsic_binary<o128>(external x86_xorps, operand2, negator);
+
+        o128 result = intrinsic_binary<o128>(multiply_instruction, operand1, operand2);
+
+        if (esize == 32)
+        {
+            elm result 1 32 (o64)0;
+        }
+
+        elm result 1 64 (o64)0;
+
+        V(Rd, result);
+
+        return;
+    }
+
     float_binary_scalar(Rd, Rn, Rm, ftype, internal FPNMul);
 }
 
@@ -125,6 +165,27 @@ fl_instruction 32 fnmul_scalar(00011110 ftype_2 1 Rm_5 100010 Rn_5 Rd_5)
 */
 fl_instruction 32 fabs_scalar(00011110 ftype_2 100000110000 Rn_5 Rd_5)
 {
+    if (use_fast_float() && use_x86_sse())
+    {
+        int esize = get_flt_size(ftype);
+
+        o128 operand = V(Rn);
+        o128 mask = (o64)((1 << (esize - 1)) - 1);
+
+        o128 result = intrinsic_binary<o128>(external x86_pand, operand, mask);
+
+        if (esize == 32)
+        {
+            elm result 1 32 (o64)0;
+        }
+
+        elm result 1 64 (o64)0;
+
+        V(Rd, result);
+
+        return;
+    }
+
     float_unary_scalar(Rd, Rn, ftype, internal FPAbs);
 }
 
@@ -133,6 +194,27 @@ fl_instruction 32 fabs_scalar(00011110 ftype_2 100000110000 Rn_5 Rd_5)
 */
 fl_instruction 32 fneg_scalar(00011110 ftype_2 100001010000 Rn_5 Rd_5)
 {
+    if (use_fast_float() && use_x86_sse())
+    {
+        int esize = get_flt_size(ftype);
+
+        o128 operand = V(Rn);
+        o128 mask = (o64)(1 << (esize - 1));
+
+        o128 result = intrinsic_binary<o128>(external x86_xorps, operand, mask);
+
+        if (esize == 32)
+        {
+            elm result 1 32 (o64)0;
+        }
+
+        elm result 1 64 (o64)0;
+
+        V(Rd, result);
+
+        return;
+    }
+
     float_unary_scalar(Rd, Rn, ftype, internal FPNeg);
 }
 
@@ -141,6 +223,25 @@ fl_instruction 32 fneg_scalar(00011110 ftype_2 100001010000 Rn_5 Rd_5)
 */
 fl_instruction 32 fneg_vector(0 Q_1 1011101 sz_1 100000111110 Rn_5 Rd_5)
 {
+    if (use_fast_float() && use_x86_sse())
+    {
+        int esize = 32 << sz;
+
+        o128 operand = V(Rn);
+        o128 mask = sse_coppy_gp_across_lanes((o64)(1 << (esize - 1)), esize);
+
+        o128 result = intrinsic_binary<o128>(external x86_xorps, operand, mask);
+
+        if (Q == 0)
+        {
+            elm result 1 64 (o64)0;
+        }
+
+        V(Rd, result);
+
+        return;
+    }
+
     float_unary_vector(Rd, Rn, Q, sz, internal FPNeg);
 }
 
@@ -149,6 +250,37 @@ fl_instruction 32 fneg_vector(0 Q_1 1011101 sz_1 100000111110 Rn_5 Rd_5)
 */
 fl_instruction 32 fsqrt_scalar(00011110 ftype_2 100001110000 Rn_5 Rd_5)
 {
+    if (use_fast_float() && use_x86_sse() && ftype != 0b11)
+    {
+        int esize = get_flt_size(ftype);
+
+        o128 operand = V(Rn);
+
+        int sqrt_instruction;
+
+        if (esize == 64)
+        {
+            sqrt_instruction = external x86_sqrtsd;
+        }
+        else
+        {
+            sqrt_instruction = external x86_sqrtss;
+        }
+
+        o128 result = intrinsic_unary<o128>(sqrt_instruction, operand);
+
+        if (esize == 32)
+        {
+            elm result 1 32 (o64)0;
+        }
+
+        elm result 1 64 (o64)0;
+
+        V(Rd, result);
+
+        return;
+    }
+
     float_unary_scalar(Rd, Rn, ftype, internal FPSqrt);
 }
 
@@ -157,6 +289,35 @@ fl_instruction 32 fsqrt_scalar(00011110 ftype_2 100001110000 Rn_5 Rd_5)
 */
 fl_instruction 32 fsqrt_vector(0 Q_1 1011101 sz_1 100001111110 Rn_5 Rd_5)
 {
+    if (use_fast_float() && use_x86_sse())
+    {
+        int esize = 32 << sz;
+
+        o128 operand = V(Rn);
+
+        int sqrt_instruction;
+
+        if (esize == 64)
+        {
+            sqrt_instruction = external x86_sqrtpd;
+        }
+        else
+        {
+            sqrt_instruction = external x86_sqrtps;
+        }
+
+        o128 result = intrinsic_unary<o128>(sqrt_instruction, operand);
+
+        if (Q == 0)
+        {
+            elm result 1 64 (o64)0;
+        }
+
+        V(Rd, result);
+
+        return;
+    }
+
     float_unary_vector(Rd, Rn, Q, sz, internal FPSqrt);
 }
 
@@ -165,6 +326,36 @@ fl_instruction 32 fsqrt_vector(0 Q_1 1011101 sz_1 100001111110 Rn_5 Rd_5)
 */
 fl_instruction 32 frecpe_vector(0 Q_1 0011101 sz_1 100001110110 Rn_5 Rd_5)
 {
+    if (use_fast_float() && use_x86_sse())
+    {
+        int esize = 32 << sz;
+
+        o128 operand = V(Rn);
+        o128 one = sse_coppy_gp_across_lanes(float_imm(1, esize), esize);
+
+        int divide_instruction;
+
+        if (esize == 64)
+        {
+            divide_instruction = external x86_divpd;
+        }
+        else
+        {
+            divide_instruction = external x86_divps;
+        }
+
+        o128 result = intrinsic_binary<o128>(divide_instruction, one, operand);
+
+        if (Q == 0)
+        {
+            elm result 1 64 (o64)0;
+        }
+
+        V(Rd, result);
+
+        return;
+    }
+
     float_unary_vector(Rd, Rn, Q, sz, internal FPRecipEstimate);
 }
 
@@ -177,18 +368,50 @@ fl_instruction 32 frsqrte_scalar(011111101 sz_1 100001110110 Rn_5 Rd_5)
 
     o64 operand = V(Rn);
 
-    o64 fpcr_state = _sys(external fpcr);
-
-    o64 result = FPRSqrtEstimate(operand, fpcr_state, esize);
-
-    if (esize == 32)
+    if (use_fast_float() && use_x86_sse())
     {
-        result = result & UINT32_MAX;
+        o128 one = float_imm(1, esize);
+
+        int sqrt_instruction;
+        int divide_instruction;
+
+        if (esize == 64)
+        {
+            sqrt_instruction = external x86_sqrtsd;
+            divide_instruction = external x86_divsd;
+        }
+        else
+        {
+            sqrt_instruction = external x86_sqrtss;
+            divide_instruction = external x86_divss;
+        }
+
+        o128 sqrt_result = intrinsic_unary<o128>(sqrt_instruction, operand);
+        o128 reciprocal_result = intrinsic_binary<o128>(divide_instruction, one, sqrt_result);
+
+        if (esize == 32)
+        {
+            elm reciprocal_result 1 32 (o64)0;
+        }
+
+        elm reciprocal_result 1 64 (o64)0;
+
+        V(Rd, reciprocal_result);
     }
+    else
+    {
+        o64 fpcr_state = _sys(external fpcr);
 
-    V(Rd, result);
+        o64 result = FPRSqrtEstimate(operand, fpcr_state, esize);
+
+        if (esize == 32)
+        {
+            result = result & UINT32_MAX;
+        }
+
+        V(Rd, result);
+    }
 }
-
 
 /*
     MISC OPERATIONS

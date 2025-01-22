@@ -19,6 +19,11 @@ int use_fast_float() external
 int use_x86_sse() external
 int use_x86_sse2() external
 int use_x86_sse41() external
+int use_x86() external
+int use_x86_lzcnt() external
+
+O x86_add_set_flags<O>(O n, O m) external
+O x86_subtract_set_flags<O>(O n, O m) external
 
 //pc
 int _get_pc() external
@@ -40,6 +45,23 @@ R intrinsic_ternary_imm<R> (int instruction, R source_0, R source_1, int source_
 
 o64 _compare_and_swap(o64 physical_address, o64 expecting, o64 to_swap, int size)
 {
+    if (use_x86())
+    {
+        if (size != 64)
+        {
+            o64 mask = (1 << size) - 1;
+            
+            o64 masking_value = physical_read o64 physical_address;
+
+            masking_value = masking_value & ~mask;
+
+            expecting = (expecting & mask) | masking_value;
+            to_swap = (to_swap & mask) | masking_value;
+        }
+
+        return intrinsic_ternary<o64>(external x86_cmpxchg, physical_address, expecting, to_swap);
+    }
+
     return call(physical_address, expecting, to_swap, size, 0, 0, external compare_and_swap_interpreter_cpp);
 }
 
