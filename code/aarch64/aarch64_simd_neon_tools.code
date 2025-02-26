@@ -47,7 +47,7 @@ int get_x86_rounding_mode(int rounding)
         undefined();
     }
 
-    return rounding_control;
+    return 8 | rounding_control;
 }
 
 o64 shift_right_check(o64 to_shift, o64 shift, int size, int is_unsigned)
@@ -370,6 +370,79 @@ o128 replicate_vector(o128 source, int v_size, int count)
     return result;
 }
 
+void st1(int wback, int Q, int L, int opcode, int size, int Rm, int Rn, int Rt)
+{
+    int datasize = 64 << Q;
+    int esize = 8 << size;
+    int elements = datasize / esize;
+
+    int ebytes = esize / 8;
+
+    int rpt;
+
+    if (opcode == 0b0010)
+    {
+        rpt = 4;
+    }
+    else if (opcode == 0b0110)
+    {
+        rpt = 3;
+    }
+    else if (opcode == 0b1010)
+    {
+        rpt = 2;
+    }
+    else if (opcode == 0b0111)
+    {
+        rpt = 1;
+    }
+    else
+    {
+        undefined();
+    }
+
+    int selem = 1;
+
+    o64 address = XSP(Rn);
+
+    int offs = 0;
+    int t = Rt;
+    int m = Rm;
+
+    o_type O = switch (ebytes * 8) { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64, case 128 : o128 };
+
+    loop (rpt) r
+    {
+        loop (elements) e
+        {
+            int tt = (t + r) % 32;
+
+            loop (selem) s
+            {
+                o128 rval = V(tt);
+                o64 eaddr = address + offs;
+                mem<O>(eaddr, elm rval e esize);
+                offs = offs + ebytes;
+                tt = (tt + 1) % 32;
+            }
+        }
+    }
+
+    if (wback)
+    {
+        o64 _offs = offs;
+
+        if (Rm != 31)
+        {
+            _offs = X(Rm);
+        }
+
+        address = address + _offs;
+        
+        XSP(Rn, address);
+    }
+}
+
 void st(int wback, int Q, int L, int opcode, int size, int Rm, int Rn, int Rt)
 {
     int datasize = 64 << Q;
@@ -402,6 +475,90 @@ void st(int wback, int Q, int L, int opcode, int size, int Rm, int Rn, int Rt)
                 mem<O>(eaddr, elm rval e esize);
                 offs = offs + ebytes;
                 tt = (tt + 1) % 32;
+            }
+        }
+    }
+
+    if (wback)
+    {
+        o64 _offs = offs;
+
+        if (Rm != 31)
+        {
+            _offs = X(Rm);
+        }
+
+        address = address + _offs;
+        
+        XSP(Rn, address);
+    }
+}
+
+void memory_4(int Q, int L, int size, int Rm, int Rn, int Rt)
+{
+    int wback = Rm != -1;
+
+    int datasize = 64 << Q;
+    int esize = 8 << size;
+    int elements = datasize / esize;
+
+    int ebytes = esize / 8;
+
+    int rpt = 1;
+    int selem = 4;
+
+    o64 address = XSP(Rn);
+
+    o64 offs = 0;
+
+    o_type O = switch (ebytes * 8) { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64, case 128 : o128 };
+
+    if (L)
+    {
+        loop (rpt) r
+        {
+            loop (elements) e
+            {
+                int tt = (Rt + r) % 32;
+
+                loop (selem) s
+                {
+                    o128 rval = V(tt);
+                    o64 eaddr = address + offs;
+
+                    if (datasize == 64)
+                    {
+                        elm rval 1 64 (o64)0;
+                    }
+
+                    elm rval e esize mem<O>(eaddr);
+
+                    V(tt, rval);
+
+                    offs = offs + ebytes;
+                    tt = (tt + 1) % 32;
+                }
+            }
+        }
+    }
+    else
+    {
+        loop (rpt) r
+        {
+            loop (elements) e
+            {
+                int tt = (Rt + r) % 32;
+
+                loop (selem) s
+                {
+                    o128 rval = V(tt);
+                    o64 eaddr = address + offs;
+
+                    mem<O>(eaddr, elm rval e esize);
+
+                    offs = offs + ebytes;
+                    tt = (tt + 1) % 32;
+                }
             }
         }
     }
@@ -998,121 +1155,120 @@ o64 FixedToFP(o64 source, int fracbits, int is_unsigned, int to, int from)
     return call(source, fracbits, is_unsigned, to, from, 0, external FixedToFP_I);
 }
 
-o64 FPToFixed(o64 source, int fracbits, int is_unsigned, int round, int to, int from) 
+o64 x86_fp_to_fixed(o64 source_i, int fracbits, int is_unsigned, int round, int to, int from)
 {
-    if (use_fast_float() && to != 16 && from != 16 && round != external FPRounding_ODD && use_x86_sse41())
+    o_type F = switch from {case 32 : o32, case 64 : o64 };
+    o_type I = switch to {case 32 : o32, case 64 : o64 };
+
+    F source = source_i;
+
+    if (fracbits != 0)
     {
-        o_type F = switch from {case 32 : o32, case 64 : o64 };
-        o_type I = switch to {case 32 : o32, case 64 : o64 };
+        F power = create_fixed_from_fbits<F>(fracbits, from);
 
-        o64 max_i;
-        o64 min_i;
+        source = source fmul power;
+    }
 
-        F max;
-        F min;
+    int x86_rounding_control = 0;
 
-        if (is_unsigned)
+    int round_instruction = select(from == 32, external x86_roundss, external x86_roundsd);
+
+    if (round == external FPRounding_TIEAWAY)
+    {
+        F int_result = intrinsic_binary_imm<o128>(round_instruction, source, 8 | 0b01)
+        F error = source fsub int_result;
+
+        F point_five = (to_float F (o64)1) fdiv (to_float F (o64)2);
+        F zero = 0;
+        F one = to_float F (o64)1;
+
+        o32 round_up = ((error fcgt point_five) | ((error feq point_five) && (int_result fcgte zero)));
+
+        if (round_up)
         {
-            min = 0;
-            max = to_float F create_mask(to);
+            set int_result int_result fadd one;
+        }
 
-            min_i = 0
-            max_i = create_mask(to);
+        source = int_result;
+
+        x86_rounding_control = 8 | 0b11;
+    }
+    else
+    {
+        x86_rounding_control = get_x86_rounding_mode(round);
+    }
+
+    source = intrinsic_binary_imm<o128>(round_instruction, source, x86_rounding_control);
+
+    I max;
+    I min;
+
+    if (is_unsigned)
+    {
+        min = 0;
+        max = -1;
+    }
+    else
+    {
+        max = ((I)(-1)) >> 1;
+        min = 1 << (to - 1);
+    }
+
+    o64 result = 0;
+
+    if (float_is_nan(source, from))
+    {
+        set result 0;
+    }
+    else if (is_unsigned)
+    {
+        if (source fcgte (to_float F max))
+        {
+            set result max;
+        }
+        else if (source fclte (to_float F min))
+        {
+            set result min;
         }
         else
         {
-            min = to_float signed F (I)(1 << (to - 1));
-            max = to_float signed F (I)(create_mask(to - 1));
+            I sub_max_i = (1 << (to - 1));
+            F sub_max_f = float_imm(sub_max_i, from);
 
-            min_i = (I)(1 << (to - 1));
-            max_i = (I)(create_mask(to - 1));
-        }
-
-        F working = source;
-
-        if (fracbits != 0)
-        {
-            F power = create_fixed_from_fbits<F>(fracbits, from);
-
-            working = power fmul working;
-        }
-
-        int rounding_control;
-
-        if (round == external FPRounding_TIEEVEN)
-        {
-            rounding_control = 0b00;
-        }
-        else if (round == external FPRounding_NEGINF)
-        {
-            rounding_control = 0b01;
-        }
-        else if (round == external FPRounding_POSINF)
-        {
-            rounding_control = 0b10;
-        }
-        else if (round == external FPRounding_ZERO)
-        {
-            rounding_control = 0b11;
-        }
-        else if (round == external FPRounding_TIEAWAY)
-        {
-            rounding_control = 0b10;
-
-            if (working fclte 0)
-            {
-                set working (working fsub (F)float_imm(1, from));
-            }
-        }
-        else
-        {
-            undefined();
-        }
-
-        if (from == 32)
-        {
-            working = intrinsic_binary_imm<o128>(external x86_roundss, working, rounding_control);
-        }
-        else
-        {
-            working = intrinsic_binary_imm<o128>(external x86_roundsd, working, rounding_control);
-        }
-
-        I result = 0;
-
-        if (working fcgte max)
-        {
-            set result (I)max_i;
-        }
-        else if (working fclte min)
-        {
-            set result (I)min_i;
-        }
-        else if (is_unsigned)
-        {
-            I s_max_i = (I)(create_mask(to - 1));
-
-            F s_max = to_float signed F s_max_i;
-
-            if (working cgt s_max)
-            {
-                F difference = working fsub s_max;
-                set working working fsub difference      
-
-                set result (I)(to_int signed I difference);
-                set result result + (I)(to_int signed I working);
+            if (source fcgte sub_max_f)
+            {               
+                set result (to_int signed I (source fsub sub_max_f)) + sub_max_i;
             }
             else
             {
-                set result (I)(to_int signed I working);
+                set result to_int signed I source;
             }
         }
-        else
-        {          
-            set result (I)(to_int signed I working);
+    }
+    else
+    {
+        if (source fcgte (to_float signed F max))
+        {
+            set result max;
         }
+        else if (source fclte (to_float signed F min))
+        {
+            set result min;
+        }
+        else
+        {
+            set result to_int signed I source;
+        }
+    }
 
-        return result;
+    return result;
+}
+
+o64 FPToFixed(o64 source, int fracbits, int is_unsigned, int round, int to, int from) 
+{
+    if (use_fast_float() && to != 16 && from != 16 && use_x86_sse())
+    {
+        return x86_fp_to_fixed(source, fracbits, is_unsigned, round, to, from);
     }
 
     return call(source, fracbits, is_unsigned, round, to, from, external FPToFixed_I);
@@ -1138,7 +1294,7 @@ o64 FPConvert(o64 source, int to, int from)
             result = intrinsic_unary<o128>(external x86_cvtss2sd, source);
         }
 
-        return result;
+        return result & create_mask(to);
     }
 
     return call(source, 0, 0, to, from, 0, external FPConvert_I);
@@ -1693,6 +1849,15 @@ void fcm_vector(int Rd, int Rn, int Rm, int mode, int Q, int sz)
             //! <
             control = 5;
         }
+        else if (mode == 3)
+        {
+            // <=
+            control = 2;
+        }
+        else
+        {
+            undefined();
+        }
 
         result = intrinsic_ternary_imm<o128>(operation, n, m, control);
 
@@ -1728,6 +1893,14 @@ void fcm_vector(int Rd, int Rn, int Rm, int mode, int Q, int sz)
             else if (mode == 2)
             {
                 element_result = 0 - FPCompareGE(element1, element2, fpcr_state, esize);
+            }
+            else if (mode == 3)
+            {
+                element_result = ~(0 - FPCompareGT(element1, element2, fpcr_state, esize));
+            }
+            else
+            {
+                undefined();
             }
 
             elm result e esize element_result;

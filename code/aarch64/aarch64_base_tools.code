@@ -291,16 +291,16 @@ O add_subtract_carry_impl<O>(O n, O m, int set_flags, int is_add, O carry)
     return d;
 }
 
-o8 condition_holds(int cond)
+o32 condition_holds(int cond)
 {
-    o8 n = _sys(0);
-    o8 z = _sys(1);
-    o8 c = _sys(2);
-    o8 v = _sys(3);
+    o32 n = _sys(0);
+    o32 z = _sys(1);
+    o32 c = _sys(2);
+    o32 v = _sys(3);
 
     int raw_condition = cond >> 1;
 
-    o8 result;
+    o32 result;
 
     if (raw_condition == 0)
     {
@@ -352,9 +352,13 @@ void branch_long_universal(int Rn, int link)
         o64 link_address = _get_pc() + 4;
         
         X(30, link_address);
-    }
 
-    _branch_long(branch_location);
+        _branch_call(branch_location);
+    }
+    else
+    {
+        _branch_long(branch_location);
+    }
 }
 
 int select(int condition, int yes, int no)

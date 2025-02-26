@@ -10,6 +10,8 @@ void V(int reg_id, o128 value) external
 void _branch_long(o64 location) external
 void _branch_short(int location) external
 void _branch_conditional(int yes, int no, o64 condition) external
+void _branch_call(o64 location) external
+void _return_from_call(o64 location) external
 
 o64 get_vector_context() external
 void store_context() external

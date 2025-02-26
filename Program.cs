@@ -45,6 +45,6 @@ class Program
 
         generator.generate_files(sf);
 
-        generator.store_to("/home/linvirt/code/rem/src/emulator/aarch64/", "aarch64_impl");
+        generator.store_to("/media/linvirt/partish/rem/src/emulator/aarch64/", "aarch64_impl");
     }
 }

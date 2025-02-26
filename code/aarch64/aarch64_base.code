@@ -761,7 +761,7 @@ fl_instruction 32 branch_register (1101011000 l_1 11111000000 Rn_5 00000)
 */
 fl_instruction 32 return_register (1101011001011111000000 Rn_5 00000)
 {
-    branch_long_universal(Rn, false);
+    _return_from_call(X(Rn));
 }
 
 /*
@@ -820,9 +820,13 @@ fl_instruction 32 b_unconditional(op_1 00101 imm26_26)
     {
         int next_location = _get_pc() + 4;
         X(30, next_location);
+
+        _branch_call(new_location);
     }
-    
-    _branch_short(new_location);
+    else
+    {
+        _branch_short(new_location);
+    }
 }
 
 /*

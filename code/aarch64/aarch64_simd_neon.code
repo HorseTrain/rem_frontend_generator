@@ -1064,6 +1064,16 @@ fl_instruction 32 tbl(0 Q_1 001110000 Rm_5 0 len_2 000 Rn_5 Rd_5)
     load_context();
 }
 
+fl_instruction 32 ld4_st4_multiple_structures(0 Q_1 0011000 L_1 0000000000 size_2 Rn_5 Rt_5)
+{
+    memory_4(Q, L, size, -1, Rn, Rt);
+}
+
+fl_instruction 32 ld4_st4_multiple_structures_post(0 Q_1 0011001 L_1 0 Rm_5 0000 size_2 Rn_5 Rt_5)
+{
+    memory_4(Q, L, size, Rm, Rn, Rt);
+}
+
 fl_instruction 32 ld1r_no_offset(0 Q_1 001101010000001100 size_2 Rn_5 Rt_5)
 {
     memory_1(false, Q, 1, 0, 0, 0, 6, 0, size, Rn, Rt, true);
@@ -1082,6 +1092,26 @@ fl_instruction 32 ld1_single_structure_no_offset(0 Q_1 00110101000000 opcode_2 !
 fl_instruction 32 ld1_single_structure_post_index(0 Q_1 001101110 Rm_5 opcode_2 != 0b11 0 S_1 size_2 Rn_5 Rt_5)
 {
     memory_1(true, Q, 1, 0, Rm, 0, opcode << 1, S, size, Rn, Rt, true);
+}
+
+fl_instruction 32 st1_multiple_structures_no_offset(0 Q_1 00110000000000 ophi_2 1 oplo_1 size_2 Rn_5 Rt_5)
+{
+    int opcode = ophi;
+
+    opcode = (opcode << 1) | 1;
+    opcode = (opcode << 1) | oplo;
+
+    st1(false, Q, 0, opcode, size, 0, Rn, Rt);
+}
+
+fl_instruction 32 st1_multiple_structures_post_index(0 Q_1 001100100 Rm_5 ophi_2 1 oplo_1 size_2 Rn_5 Rt_5)
+{
+    int opcode = ophi;
+
+    opcode = (opcode << 1) | 1;
+    opcode = (opcode << 1) | oplo;
+
+    st1(true, Q, 0, opcode, size, Rm, Rn, Rt);
 }
 
 fl_instruction 32 st2_multiple_structures_no_offset(0 Q_1 001100000000001000 size_2 Rn_5 Rt_5)

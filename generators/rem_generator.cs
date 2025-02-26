@@ -464,30 +464,58 @@ namespace rem_frontend_generator.generators
                     {
                         cf_runtime.Push(true);
 
-                        string result = "{";
+                        if (ifs.no != null)
+                        {
+                            string result = "{";
 
-                        string context = $"{get_default_argument(interpreted)}->ir";
+                            string context = $"{get_default_argument(interpreted)}->ir";
 
-                        result += @$"
-    ir_operand end = ir_operation_block::create_label({context});
-    ir_operand yes = ir_operation_block::create_label({context});
+                            result += @$"
+        ir_operand end = ir_operation_block::create_label({context});
+        ir_operand yes = ir_operation_block::create_label({context});
 
-    ir_operand condition = {generate_object(ifs.condition,interpreted)};
+        ir_operand condition = {generate_object(ifs.condition,interpreted)};
 
-    ir_operation_block::jump_if({context},yes, condition);
-{(ifs.no != null ? string_tools.tab_string(generate_object(ifs.no, interpreted, true)) : "\t/* TODO if statements without a no should not have this*/")}
-    
-    ir_operation_block::jump({context},end);
-    ir_operation_block::mark_label({context}, yes);
+        ir_operation_block::jump_if({context},yes, condition);
+    {(ifs.no != null ? string_tools.tab_string(generate_object(ifs.no, interpreted, true)) : "\t/* TODO if statements without a no should not have this*/")}
+        
+        ir_operation_block::jump({context},end);
+        ir_operation_block::mark_label({context}, yes);
 
-{string_tools.tab_string(generate_object(ifs.yes, interpreted, true))}
+    {string_tools.tab_string(generate_object(ifs.yes, interpreted, true))}
 
-    ir_operation_block::mark_label({context}, end);
-";
+        ir_operation_block::mark_label({context}, end);
+    ";
 
-                        cf_runtime.Pop();
+                            cf_runtime.Pop();
 
-                        return result + "}";
+                            return result + "}";
+                        }
+                        else
+                        {
+                            string result = "{";
+
+                            string context = $"{get_default_argument(interpreted)}->ir";
+
+                            result += @$"
+        ir_operand end = ir_operation_block::create_label({context});
+        ir_operand yes = ir_operation_block::create_label({context});
+
+        ir_operand condition = {generate_object(ifs.condition,interpreted)};
+
+        condition = ssa_emit_context::emit_ssa(ctx, ir_bitwise_exclusive_or, condition, ir_operand::create_con(1, condition.meta_data));
+
+        ir_operation_block::jump_if({context},end, condition);
+
+    {string_tools.tab_string(generate_object(ifs.yes, interpreted, true))}
+
+        ir_operation_block::mark_label({context}, end);
+    ";
+
+                            cf_runtime.Pop();
+
+                            return result + "}";
+                        }
                     }
                     else
                     {
