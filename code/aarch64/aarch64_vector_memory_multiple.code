@@ -1,0 +1,263 @@
+fl_instruction 32 ld_st_1_multiple(0 Q_1 001100 p_1 L_1 0 Rm_5 opchi_2 1 opclo_1 size_2 Rn_5 Rt_5)
+{
+    int wback = p;
+    int opcode = (opclo) | (1 << 1) | (opchi << 2);
+
+    int selem = 1;
+    int rpt;
+
+    if (opcode == 0b111)
+    {
+        rpt = 1;
+    }
+    else
+    {
+        rpt = 4 - opchi;
+    }
+
+    memory_multiple(Q, Rm, size, Rn, Rt, rpt, selem, wback, L);
+}
+
+fl_instruction 32 ld_st_2_multiple(0 Q_1 001100 p_1 L_1 0 Rm_5 1000 size_2 Rn_5 Rt_5)
+{
+    int wback = p;
+
+    int rpt = 1;
+    int selem = 2;
+
+    memory_multiple(Q, Rm, size, Rn, Rt, rpt, selem, wback, L);
+}
+
+fl_instruction 32 ld_st_3_multiple(0 Q_1 001100 p_1 L_1 0 Rm_5 0100 size_2 Rn_5 Rt_5)
+{
+    int wback = p;
+
+    int rpt = 1;
+    int selem = 3;
+
+    memory_multiple(Q, Rm, size, Rn, Rt, rpt, selem, wback, L);
+}
+
+fl_instruction 32 ld_st_4_multiple(0 Q_1 001100 p_1 L_1 0 Rm_5 0000 size_2 Rn_5 Rt_5)
+{
+    int wback = p;
+
+    int rpt = 1;
+    int selem = 4;
+
+    memory_multiple(Q, Rm, size, Rn, Rt, rpt, selem, wback, L);
+}
+
+fl_instruction 32 ldXr(0 Q_1 001101 p_1 1 R_1 Rm_5 11 b_1 0 size_2 Rn_5 Rt_5)
+{
+    memory_single(Q, p, R, Rm, b, size, Rn, Rt, 1, (0b11 << 1) | b, 0);
+}
+
+fl_instruction 32 ld_st_single(0 Q_1 001101 p_1 L_1 R_1 Rm_5 opcode_2 != 0b11 b_1 S_1 size_2 Rn_5 Rt_5)
+{
+    memory_single(Q, p, R, Rm, b, size, Rn, Rt, L, (opcode << 1) | b, S);
+}
+
+void memory_single(int Q, int p, int R, int Rm, int b, int size, int Rn, int Rt, int is_load, int opcode, int S)
+{
+    int wback = p;
+
+    int scale = bits_c(opcode, 2, 1);
+    int selem = (((opcode & 1) << 1) | R) + 1;
+    int replicate = false;
+
+    int index;
+
+    if (scale == 0b11)
+    {
+        scale = size;
+        replicate = true;
+    }
+    else if (scale == 0b00)
+    {
+        index = Q;
+
+        index = (index << 1) | S;
+        index = (index << 2) | size;
+    }
+    else if (scale == 0b01)
+    {
+        index = Q;
+
+        index = (index << 1) | S;
+        index = (index << 1) | ((size >> 1) & 1);
+    }
+    else if (scale == 0b10)
+    {
+        if ((size & 1) == 0)
+        {
+            index = (Q << 1) | S;
+        }
+        else
+        {
+            index = Q;
+            scale = 0b11;
+        }
+    }
+
+    int datasize = 64 << Q;
+    int esize = 8 << scale;
+
+    o64 address;
+    o64 eaddr;
+    int offs = 0;
+
+    o64 element;
+
+    int ebytes = esize / 8;
+
+    address = XSP(Rn);
+
+    int t = Rt;
+
+    o_type O = switch esize { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64, case 128 : o128 };
+
+    if (replicate)
+    {
+        loop (selem) s
+        {
+            eaddr = address + offs;
+
+            element = mem<O>(eaddr);
+
+            o128 working = replicate_vector(element, esize, datasize / esize);
+
+            V(t, working);
+
+            offs = offs + ebytes;
+            t = (t + 1) % 32;
+        }
+    }
+    else 
+    {
+        if (is_load)
+        {
+            loop (selem) s
+            {
+                o128 rval = V(t);
+
+                eaddr = address + offs;
+
+                elm rval index esize (mem<O>(eaddr));
+
+                V(t, rval);
+
+                offs = offs + ebytes;
+                t = (t + 1) % 32;
+            }
+        }
+        else
+        {
+            loop (selem) s
+            {
+                o128 rval = V(t);
+
+                eaddr = address + offs;
+
+                mem<O>(eaddr, elm rval index esize);
+
+                offs = offs + ebytes;
+                t = (t + 1) % 32;
+            }
+        }
+    }
+
+    if (wback)
+    {
+        o64 _offs = offs;
+
+        if (Rm != 31)
+        {
+            _offs = X(Rm);
+        }
+        
+        address = address + _offs;
+
+        XSP(Rn, address);
+    }
+}
+
+void memory_multiple(int Q, int Rm, int size, int Rn, int Rt, int rpt, int selem, int wback, int is_load)
+{
+    int datasize = 64 << Q;
+    int esize = 8 << size;
+    int elements = datasize / esize;
+
+    int ebytes = esize / 8;
+
+    o64 address = XSP(Rn);
+    o64 eaddr;
+    o64 offs = 0;
+
+    int t = Rt;
+
+    o_type O = switch esize { case 8 : o8, case 16 : o16, case 32 : o32, case 64 : o64, case 128 : o128 };
+
+    if (is_load)
+    {
+        loop (rpt) r
+        {
+            loop (elements) e
+            {
+                int tt = (t + r) % 32; 
+
+                loop (selem) s
+                {
+                    o128 rval = V(tt);
+                    eaddr = address + offs;
+
+                    if (datasize == 64)
+                    {
+                        elm rval 1 64 (o64)0;
+                    }
+
+                    elm rval e esize mem<O>(eaddr);
+                    V(tt, rval);
+
+                    offs = offs + ebytes;
+                    tt = (tt + 1) % 32;
+                }
+            }
+        }
+    }
+    else
+    {
+        loop (rpt) r
+        {
+            loop (elements) e
+            {
+                int tt = (t + r) % 32; 
+
+                loop (selem) s
+                {
+                    o128 rval = V(tt);
+                    eaddr = address + offs;
+
+                    mem<O>(eaddr, elm rval e esize);
+
+                    offs = offs + ebytes;
+                    tt = (tt + 1) % 32;
+                }
+            }
+        }
+    }
+
+    if (wback)
+    {
+        o64 _offs = offs;
+
+        if (Rm != 31)
+        {
+            _offs = X(Rm);
+        }
+        
+        address = address + _offs;
+
+        XSP(Rn, address);
+    }
+}

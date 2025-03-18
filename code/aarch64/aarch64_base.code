@@ -470,6 +470,36 @@ fl_instruction 32 bitfield(sf_1 opc_2 100110 N_1 immr_6 imms_6 Rn_5 Rd_5)
 {
     int datasize = 32 << sf;
 
+    o_type O = switch sf { case 0 : o32, case 1 : o64 };
+
+    O src = X(Rn);
+
+    //LSL
+    if (opc == 0b10 && N == sf && imms != (0b011111 | (sf << 5)) && (imms + 1 == immr))
+    {
+        int d = (datasize - 1);
+
+        X(Rd, src << (d - imms));
+
+        return;
+    }
+
+    //LSR
+    if (opc == 0b10 && N == sf && imms == (0b011111 | (sf << 5)))
+    {
+        X(Rd, src >> immr);
+
+        return;
+    }
+
+    //ASR
+    if (opc == 0b00 && N == sf && imms == (0b011111 | (sf << 5)))
+    {
+        X(Rd, src sar immr);
+
+        return;
+    }
+
     int tmask = decode_bitmask_tmask(N, imms, immr, false, datasize, true);
     int wmask = decode_bitmask_tmask(N, imms, immr, false, datasize, false);
 
@@ -496,10 +526,7 @@ fl_instruction 32 bitfield(sf_1 opc_2 100110 N_1 immr_6 imms_6 Rn_5 Rd_5)
         undefined();
     }
 
-    o_type O = switch sf { case 0 : o32, case 1 : o64 };
-
     O dst;
-    O src = X(Rn);
 
     if (inzero)
     {
@@ -638,11 +665,7 @@ fl_instruction 32 conditional_select(sf_1 op_1 S_1 11010100 Rm_5 cond_4 0 op2_1 
 
     O condition_pass = condition_holds(cond);
 
-    if (condition_pass)
-    {
-        X(Rd, operand1);
-    }
-    else
+    if (use_x86())
     {
         if (invert)
         {
@@ -653,8 +676,31 @@ fl_instruction 32 conditional_select(sf_1 op_1 S_1 11010100 Rm_5 cond_4 0 op2_1 
         {
             operand2 = operand2 + 1;
         }
-        
-        X(Rd, operand2);
+
+        O result = intrinsic_ternary<O>(external ir_conditional_select, condition_pass, operand1, operand2);
+
+        X(Rd, result);
+    }
+    else
+    {
+        if (condition_pass)
+        {
+            X(Rd, operand1);
+        }
+        else
+        {
+            if (invert)
+            {
+                operand2 = ~operand2;
+            }
+
+            if (incrament)
+            {
+                operand2 = operand2 + 1;
+            }
+            
+            X(Rd, operand2);
+        }
     }
 }
 

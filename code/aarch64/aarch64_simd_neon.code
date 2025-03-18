@@ -316,8 +316,9 @@ fl_instruction 32 shl_immedaite(0 Q_1 0011110 immh_4 != 0 immb_3 010101 Rn_5 Rd_
 
 /*
     SSHR vector
+    USHR vector
 */
-fl_instruction 32 sshr_vector(0 Q_1 0011110 immh_4 != 0 immb_3 000001 Rn_5 Rd_5)
+fl_instruction 32 shr_vector(0 Q_1 U_1 011110 immh_4 != 0 immb_3 000001 Rn_5 Rd_5)
 {
     int esize = 8 << highest_bit_set_c(immh, 32);
     int datasize = 64 << Q;
@@ -334,7 +335,12 @@ fl_instruction 32 sshr_vector(0 Q_1 0011110 immh_4 != 0 immb_3 000001 Rn_5 Rd_5)
     {
         o64 element = elm operand e esize;
 
-        element = shift_right_check(extend o64 (O)element, shift, esize, false);
+        if (!U)
+        {
+            element = extend o64 (O)element;
+        }
+
+        element = shift_right_check(element, shift, esize, U);
 
         elm result e esize element;
     }
@@ -1026,6 +1032,30 @@ fl_instruction 32 zip(0 Q_1 001110 size_2 0 Rm_5 0 op_1 1110 Rn_5 Rd_5)
 }
 
 /*
+    UZP1
+    UZP2
+*/
+fl_instruction 32 uzp(0	Q_1 001110 size_2 0 Rm_5 0 op_1 0110 Rn_5 Rd_5)
+{
+    int esize = 8 << size;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+    int part = op;
+
+    o128 operandl = V(Rn);
+    o128 operandh = V(Rm);
+
+    o128 result = vector_zero;
+
+    loop (elements) e
+    {
+        elm result e esize get_from_concacted_vector(operandh, operandl, (2 * e) + part, elements, esize);
+    }
+
+    V(Rd, result);
+}
+
+/*
     TRN1
     TRN2    
 */
@@ -1062,76 +1092,6 @@ fl_instruction 32 tbl(0 Q_1 001110000 Rm_5 0 len_2 000 Rn_5 Rd_5)
     call(vector_context, Rd, Rn, len, Rm, Q, external table_lookup_fallback);
 
     load_context();
-}
-
-fl_instruction 32 ld4_st4_multiple_structures(0 Q_1 0011000 L_1 0000000000 size_2 Rn_5 Rt_5)
-{
-    memory_4(Q, L, size, -1, Rn, Rt);
-}
-
-fl_instruction 32 ld4_st4_multiple_structures_post(0 Q_1 0011001 L_1 0 Rm_5 0000 size_2 Rn_5 Rt_5)
-{
-    memory_4(Q, L, size, Rm, Rn, Rt);
-}
-
-fl_instruction 32 ld1r_no_offset(0 Q_1 001101010000001100 size_2 Rn_5 Rt_5)
-{
-    memory_1(false, Q, 1, 0, 0, 0, 6, 0, size, Rn, Rt, true);
-}
-
-fl_instruction 32 ld1r_post_index(0 Q_1 001101110 Rm_5 1100 size_2 Rn_5 Rt_5)
-{
-    memory_1(true,Q, 1, 0, Rm, 0, 6, 0, size, Rn, Rt, true);
-}
-
-fl_instruction 32 ld1_single_structure_no_offset(0 Q_1 00110101000000 opcode_2 != 0b11 0 S_1 size_2 Rn_5 Rt_5)
-{
-    memory_1(false, Q, 1, 0, 0, 0, opcode << 1, S, size, Rn, Rt, true);
-}
-
-fl_instruction 32 ld1_single_structure_post_index(0 Q_1 001101110 Rm_5 opcode_2 != 0b11 0 S_1 size_2 Rn_5 Rt_5)
-{
-    memory_1(true, Q, 1, 0, Rm, 0, opcode << 1, S, size, Rn, Rt, true);
-}
-
-fl_instruction 32 st1_multiple_structures_no_offset(0 Q_1 00110000000000 ophi_2 1 oplo_1 size_2 Rn_5 Rt_5)
-{
-    int opcode = ophi;
-
-    opcode = (opcode << 1) | 1;
-    opcode = (opcode << 1) | oplo;
-
-    st1(false, Q, 0, opcode, size, 0, Rn, Rt);
-}
-
-fl_instruction 32 st1_multiple_structures_post_index(0 Q_1 001100100 Rm_5 ophi_2 1 oplo_1 size_2 Rn_5 Rt_5)
-{
-    int opcode = ophi;
-
-    opcode = (opcode << 1) | 1;
-    opcode = (opcode << 1) | oplo;
-
-    st1(true, Q, 0, opcode, size, Rm, Rn, Rt);
-}
-
-fl_instruction 32 st2_multiple_structures_no_offset(0 Q_1 001100000000001000 size_2 Rn_5 Rt_5)
-{
-    st(false, Q, 0, 0b100, size, 0, Rn, Rt);
-}
-
-fl_instruction 32 st2_multiple_structures_post_index(0 Q_1 001100100 Rm_5 1000 size_2 Rn_5 Rt_5)
-{
-    st(true, Q, 0, 0b100, size, Rm, Rn, Rt);
-}
-
-fl_instruction 32 st1_single_structure_no_offset(0 Q_1 00110100000000 opcode_2 0 S_1 size_2 Rn_5 Rt_5)
-{
-    memory_1(false, Q, 1, 0, 0, 0, opcode << 1, S, size, Rn, Rt, false);
-}
-
-fl_instruction 32 st1_single_structure_post_index(0 Q_1 001101100 Rm_5 opcode_2 0 S_1 size_2 Rn_5 Rt_5)
-{
-    memory_1(true, Q, 1, 0, Rm, 0, opcode << 1, S, size, Rn, Rt, false);
 }
 
 /*

@@ -53,6 +53,31 @@ fl_instruction 32 fcvtz_scalar_integer(sf_1 0011110 ftype_2 11100 U_1 000000 Rn_
 }
 
 /*
+    FCVTZS vector
+    FCVTZU vector
+*/
+fl_instruction 32 fcvtz_vector_integer(0 Q_1 U_1 011101 sz_1 100001101110 Rn_5 Rd_5)
+{
+    int esize = 32 << sz;
+    int datasize = 64 << Q;
+    int elements = datasize / esize;
+
+    int is_unsigned = U;
+
+    o128 operand = V(Rn);
+    o128 result = vector_zero;
+
+    loop (elements) e
+    {
+        o64 element = elm operand e esize;
+
+        elm result e esize FPToFixed(element, 0, is_unsigned, external FPRounding_ZERO, esize, esize);
+    }
+
+    V(Rd, result);
+}
+
+/*
     FCVTNS
     FCVTNU
 */

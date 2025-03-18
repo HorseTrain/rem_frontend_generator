@@ -33,7 +33,7 @@ class Program
 
     static void Main()
     {
-        string source = read_all_files("/home/linvirt/code/rem_frontend_generator/code/aarch64");
+        string source = read_all_files("/media/linvirt/partish/rem_frontend_generator/code/aarch64");
 
         languageParser.SourceFileContext parse = get_parse_tree(source);
 
@@ -46,5 +46,7 @@ class Program
         generator.generate_files(sf);
 
         generator.store_to("/media/linvirt/partish/rem/src/emulator/aarch64/", "aarch64_impl");
+
+        Console.WriteLine("Success");
     }
 }

@@ -1025,7 +1025,7 @@ static void append_table(guest_process* process, std::string encoding, void* emi
 		}
 	}
 
-	fixed_length_decoder<uint32_t>::insert_entry(&process->decoder, instruction, mask, emit, interperate, decoder_helper, name);
+	fixed_length_decoder<uint32_t>::insert_entry(&process->fixed_length_decoder_context, instruction, mask, emit, interperate, decoder_helper, name);
 }
 
 template <typename T>
@@ -1090,43 +1090,43 @@ static ir_operand copy_new_raw_size(ssa_emit_context* ctx, ir_operand source, ui
 template <typename R>
 R intrinsic_unary_interpreter(interpreter_data* ctx, uint64_t instruction, R source)
 {
-
+    throw_error();
 }
 
 template <typename R>
 R intrinsic_binary_interpreter(interpreter_data* ctx, uint64_t instruction, R source_0, R source_1)
 {
-
+    throw_error();
 }
 
 template <typename R>
 R intrinsic_binary_imm_interpreter(interpreter_data* ctx, uint64_t instruction, R source_0, uint64_t source_1)
 {
-
+    throw_error();
 }
 
 template <typename R>
 R intrinsic_ternary_interpreter(interpreter_data* ctx, uint64_t instruction, R source_0, R source_1, R source_2)
 {
-
+    throw_error();
 }
 
 template <typename R>
 R intrinsic_ternary_imm_interpreter(interpreter_data* ctx, uint64_t instruction, R source_0, R source_1, uint64_t source_2)
 {
-
+    throw_error();
 }
 
 template <typename O>
 O x86_add_set_flags_interpreter(interpreter_data* ctx, O n, O m)
 {
-
+    throw_error();
 }
 
 template <typename O>
 O x86_subtract_set_flags_interpreter(interpreter_data* ctx, O n, O m)
 {
-
+    throw_error();
 }
 
 ");
